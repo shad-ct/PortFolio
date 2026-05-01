@@ -39,3 +39,12 @@ Start the local development server and watch your app come to life!
 ```
 npm run dev
 ```
+
+### Step 5: Seed MongoDB 📦
+To store the portfolio content in MongoDB, set `MONGODB_URI` and run:
+
+```
+npm run seed:portfolio
+```
+
+The script upserts a single document with `_id: "portfolio"` into the `portfolio` collection by default.

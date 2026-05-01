@@ -1,18 +1,41 @@
+import { useEffect, useState } from 'react'
+
+import AdminPage from './AdminPage'
+import BlogPage from './BlogPage'
+import HomePage from './HomePage'
+import {
+  addBlogEntry,
+  addContactEntry,
+  addProjectEntry,
+  loadSiteContent,
+  saveSiteContent,
+} from './lib/siteData'
+
 function App() {
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-white bg-black text-3xl font-bold p-4 mb-4">Hello there!</h1>
-        <h1 className="text-xl text-gray-800 mb-4">Follow now:</h1>
-        <a
-          href="https://github.com/shad-ct"
-          className="text-blue-500 hover:underline text-lg font-medium"
-        >
-          Shad-ct
-        </a>
-      </div>
-    </div>
-  );
+  const [siteContent, setSiteContent] = useState(() => loadSiteContent())
+
+  useEffect(() => {
+    saveSiteContent(siteContent)
+  }, [siteContent])
+
+  const pathname = typeof window === 'undefined' ? '/' : window.location.pathname.replace(/\/$/, '') || '/'
+
+  if (pathname.startsWith('/blog/')) {
+    const slug = decodeURIComponent(pathname.split('/').filter(Boolean)[1] ?? '')
+    return <BlogPage blogs={siteContent.blogs} slug={slug} />
+  }
+
+  if (pathname === '/admin') {
+    return (
+      <AdminPage
+        content={siteContent}
+        onAddProject={(draft) => setSiteContent((currentContent) => addProjectEntry(currentContent, draft))}
+        onAddBlog={(draft) => setSiteContent((currentContent) => addBlogEntry(currentContent, draft))}
+      />
+    )
+  }
+
+  return <HomePage projects={siteContent.projects} blogs={siteContent.blogs} onContactSubmit={(draft) => setSiteContent((currentContent) => addContactEntry(currentContent, draft))} />
 }
 
-export default App;
+export default App
