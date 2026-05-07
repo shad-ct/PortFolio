@@ -74,6 +74,102 @@ const projects = [
       'Implemented WebSockets to allow synchronized sound triggers across devices.',
       'Handled over 10,000 unique visitors during the launch week.'
     ]
+  },
+  {
+    title: 'IUCAA Website',
+    description: 'Had this wonderful opportunity to work on the IUCAA website for Kannur University Mangattuparamba. Doing PHP from scratch was a great experience.',
+    link: 'https://iucaa.kannuruniversity.ac.in/',
+    tags: ['PHP', 'University', 'Web Design'],
+    images: ['/projects/iucaa.png'],
+    bulletPoints: [
+      'Developed the official website for IUCAA, Kannur University.',
+      'Implemented backend logic using PHP from scratch.',
+      'Designed a clean, professional interface for academic use.'
+    ]
+  },
+  {
+    title: 'Sagavazhvu (Fest Edition)',
+    description: 'A real-time results and schedule tracker built for our college fest. We had only a few days to build it, and it was a huge success.',
+    link: 'https://kuc-sagavazhvu-2025.web.app/',
+    tags: ['React.js', 'Firebase', 'Real-time'],
+    images: ['/projects/sagavazhvu_fest.png'],
+    bulletPoints: [
+      'Built in just 3-5 days to meet the festival deadline.',
+      'Provided live competition results and scoreboards to students.',
+      'Handled high traffic during the event with seamless updates.'
+    ]
+  },
+  {
+    title: 'Drum Kit',
+    description: 'An interactive drum kit inspired by the movie Whiplash. Play various drum sounds using your keyboard.',
+    link: 'https://shad-ct.github.io/Projects/DrumKit/index.html',
+    tags: ['JavaScript', 'Web Audio', 'Interactivity'],
+    images: ['/projects/drumkit.png'],
+    bulletPoints: [
+      'Mapped keyboard events to high-quality drum samples.',
+      'Created a fun, responsive interface for musical experimentation.',
+      'Inspired by the high-energy vibe of Whiplash.'
+    ]
+  },
+  {
+    title: 'KeyCode Finder',
+    description: 'A handy tool to discover ASCII and keycodes for any key on your keyboard. Built during a CS class.',
+    link: 'https://shad-ct.github.io/Projects/KeyCode/index.html',
+    tags: ['JavaScript', 'Tool', 'Education'],
+    images: ['/projects/keycode.png'],
+    bulletPoints: [
+      'Instantly displays ASCII and event codes for keyboard input.',
+      'Useful for developers debugging keyboard events.',
+      'Created as a practical application of CS fundamentals.'
+    ]
+  },
+  {
+    title: 'QR Code Generator',
+    description: 'A practical tool to generate QR codes instantly from any text input.',
+    link: 'https://shad-ct.github.io/Projects/QRGenerator/index.html',
+    tags: ['JavaScript', 'API', 'Tool'],
+    images: ['/projects/qrgenerator.png'],
+    bulletPoints: [
+      'Generates high-quality QR codes in real-time.',
+      'Clean, minimalist UI focused on utility.',
+      'Supports various text formats for encoding.'
+    ]
+  },
+  {
+    title: 'റീഡർ (Malayalam TTS)',
+    description: 'A Malayalam Text-to-Speech tool designed to simplify reading long posts and texts.',
+    link: 'https://shad-ct.github.io/Reader/',
+    tags: ['Malayalam', 'TTS', 'Accessibility'],
+    images: ['/projects/reader.png'],
+    bulletPoints: [
+      'Converts Malayalam text into natural-sounding speech.',
+      'Helps users consume content without reading long texts.',
+      'Focuses on accessibility for Malayalam speakers.'
+    ]
+  },
+  {
+    title: 'Age Calculator',
+    description: 'A precise age calculator that breaks down your age into years, months, and days.',
+    link: 'https://shad-ct.github.io/Projects/YouAre__YearsOld/index.html',
+    tags: ['JavaScript', 'Tool', 'Logic'],
+    images: ['/projects/age_calc.jpg'],
+    bulletPoints: [
+      'Calculates exact age based on date of birth.',
+      'Provides a detailed breakdown of time passed.',
+      'Simple and intuitive user interface.'
+    ]
+  },
+  {
+    title: 'Chat Decoder',
+    description: 'An AI-powered tool that analyzes chat screenshots to reveal relationship dynamics using Gemini API.',
+    link: 'https://studio--chat-decoder.us-central1.hosted.app/',
+    tags: ['Gemini AI', 'React.js', 'Analysis'],
+    images: ['/projects/chat_decoder.png'],
+    bulletPoints: [
+      'Integrated Gemini API for sentiment and relationship analysis.',
+      'Processes image inputs to extract chat text and context.',
+      'Provides playful insights into interpersonal connections.'
+    ]
   }
 ];
 
