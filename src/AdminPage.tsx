@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 
 import type { BlogDraft, ProjectDraft, PeepDraft, SiteContent } from './lib/types'
 import { ADMIN_PASSWORD, ADMIN_USERNAME, isAdminAuthenticated, setAdminAuthenticated } from './lib/types'
@@ -25,7 +25,44 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [notice, setNotice] = useState('')
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'blogs' | 'contacts' | 'peeps'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'blogs' | 'contacts' | 'peeps' | 'visitors'>('dashboard')
+  const [visitors, setVisitors] = useState<any[]>([])
+  const [isLoadingVisitors, setIsLoadingVisitors] = useState(false)
+
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api'
+
+  useEffect(() => {
+    if (activeTab === 'visitors' && authenticated) {
+      fetchVisitors()
+    }
+  }, [activeTab, authenticated])
+
+  async function fetchVisitors() {
+    setIsLoadingVisitors(true)
+    try {
+      const res = await fetch(`${API_BASE}/visitors`)
+      if (res.ok) {
+        const data = await res.json()
+        setVisitors(data)
+      }
+    } catch (err) {
+      console.error('Error fetching visitors:', err)
+    } finally {
+      setIsLoadingVisitors(false)
+    }
+  }
+
+  async function deleteVisitor(id: string) {
+    if (!confirm('Delete this record?')) return
+    try {
+      const res = await fetch(`${API_BASE}/visitors/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setVisitors(prev => prev.filter(v => v.id !== id))
+      }
+    } catch (err) {
+      console.error('Error deleting visitor:', err)
+    }
+  }
   const [projectDraft, setProjectDraft] = useState<ProjectDraft>({
     title: '',
     description: '',
@@ -248,7 +285,8 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
               <button onClick={() => setActiveTab('projects')} className={activeTab === 'projects' ? 'underline' : 'hover:opacity-70'}>Projects</button>
               <button onClick={() => setActiveTab('blogs')} className={activeTab === 'blogs' ? 'underline' : 'hover:opacity-70'}>Blogs</button>
               <button onClick={() => setActiveTab('contacts')} className={activeTab === 'contacts' ? 'underline' : 'hover:opacity-70'}>Contacts</button>
-              <button onClick={() => setActiveTab('peeps')} className={activeTab === 'peeps' ? 'underline' : 'hover:opacity-70'}>Peeps</button>
+              <button onClick={() => setActiveTab('peeps')} className={`text-xs font-bold tracking-[0.2em] uppercase transition-colors ${activeTab === 'peeps' ? 'text-black border-b-2 border-black pb-1' : 'text-gray-400 hover:text-black'}`}>PEEPS</button>
+              <button onClick={() => { setActiveTab('visitors'); fetchVisitors(); }} className={`text-xs font-bold tracking-[0.2em] uppercase transition-colors ${activeTab === 'visitors' ? 'text-black border-b-2 border-black pb-1' : 'text-gray-400 hover:text-black'}`}>VISITORS</button>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -532,7 +570,7 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                           </div>
                         )}
                         <div className="mt-4 flex flex-wrap gap-3 text-sm font-medium">
-                          {project.link && <a href={project.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 border border-black bg-black text-white px-3 py-1.5 text-xs hover:bg-white hover:text-black transition-colors">View â†—</a>}
+                          {project.link && <a href={project.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 border border-black bg-black text-white px-3 py-1.5 text-xs hover:bg-white hover:text-black transition-colors">View →</a>}
                           {project.githubLink && <a href={project.githubLink} target="_blank" rel="noreferrer" className="text-xs border border-gray-300 px-3 py-1.5 hover:border-black transition-colors">GitHub</a>}
                           {project.liveLink && <a href={project.liveLink} target="_blank" rel="noreferrer" className="text-xs border border-gray-300 px-3 py-1.5 hover:border-black transition-colors">Live</a>}
                         </div>
@@ -691,12 +729,12 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                           <div className="flex-1">
                             <p className="text-[0.6rem] text-gray-500 tracking-widest uppercase">{blog.publishedAt}</p>
                             <h3 className="text-xl font-bold leading-tight mt-0.5 cursor-pointer hover:underline" onClick={() => setExpandedBlogId(expandedBlogId === blog.id ? null : blog.id)}>
-                              {blog.title} <span className="text-gray-400 font-normal text-base">{expandedBlogId === blog.id ? 'âˆ’' : '+'}</span>
+                              {blog.title} <span className="text-gray-400 font-normal text-base">{expandedBlogId === blog.id ? '−' : '+'}</span>
                             </h3>
                           </div>
                           <div className="flex gap-2 shrink-0 flex-col items-end">
                             <div className="flex gap-2">
-                              <a href={`/blog/${blog.slug}`} target="_blank" rel="noreferrer" className="text-xs border border-gray-300 px-2 py-1 hover:border-black transition-colors">View â†—</a>
+                              <a href={`/blog/${blog.slug}`} target="_blank" rel="noreferrer" className="text-xs border border-gray-300 px-2 py-1 hover:border-black transition-colors">View →</a>
                               <button className="text-xs border border-gray-300 px-2 py-1 hover:border-black transition-colors" onClick={() => { setEditingBlogId(blog.id); setEditingBlogData({...blog, tags: Array.isArray(blog.tags) ? blog.tags.join(', ') : blog.tags}); setExpandedBlogId(null); }}>Edit</button>
                               <button className="text-xs border border-red-300 px-2 py-1 text-red-600 hover:bg-red-50 transition-colors" onClick={() => { if(confirm('Delete this blog?')) { onDeleteBlog && onDeleteBlog(blog.id); setNotice('Blog deleted.'); } }}>Delete</button>
                             </div>
@@ -902,6 +940,78 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
             )}
           </div>
         </section>
+      )}
+
+      {activeTab === 'visitors' && (
+        <div className="mx-auto max-w-6xl px-8 py-16 space-y-12">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-4xl font-black tracking-tighter uppercase">Visitor Logs</h2>
+              <p className="text-gray-500 mt-2">Real-time tracking of site interactions.</p>
+            </div>
+            <button onClick={fetchVisitors} className="border border-black px-6 py-2 text-xs font-bold uppercase hover:bg-black hover:text-white transition-colors">Refresh</button>
+          </div>
+
+          {isLoadingVisitors ? (
+            <p>Loading visitor data...</p>
+          ) : (
+            <div className="grid gap-6">
+              {visitors.length === 0 ? (
+                <p className="text-gray-400 italic">No visitor logs found.</p>
+              ) : (
+                <div className="overflow-x-auto border border-black/10 rounded-2xl bg-white shadow-sm">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-50 border-b border-black/10">
+                      <tr>
+                        <th className="px-6 py-4 text-[0.65rem] font-black uppercase tracking-widest text-gray-500">Visitor Info</th>
+                        <th className="px-6 py-4 text-[0.65rem] font-black uppercase tracking-widest text-gray-500">Location</th>
+                        <th className="px-6 py-4 text-[0.65rem] font-black uppercase tracking-widest text-gray-500">Device/Browser</th>
+                        <th className="px-6 py-4 text-[0.65rem] font-black uppercase tracking-widest text-gray-500">Session</th>
+                        <th className="px-6 py-4 text-[0.65rem] font-black uppercase tracking-widest text-gray-500">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-black/5">
+                      {visitors.map((v) => (
+                        <tr key={v.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-5">
+                            <p className="font-bold text-sm">{v.ip}</p>
+                            <p className="text-[0.65rem] text-gray-400 mt-1 uppercase tracking-tighter">{v.path}</p>
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">📍</span>
+                              <div>
+                                <p className="font-bold text-sm">{v.location?.city || 'Unknown'}</p>
+                                <p className="text-xs text-gray-500">{v.location?.region}, {v.location?.country}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            <p className="text-xs truncate max-w-[200px] text-gray-600" title={v.userAgent}>{v.userAgent}</p>
+                            <p className="text-[0.65rem] text-gray-400 mt-1 uppercase">{v.screenWidth}x{v.screenHeight} • {v.language}</p>
+                          </td>
+                          <td className="px-6 py-5">
+                            <p className="text-xs font-bold">{new Date(v.startTime).toLocaleString()}</p>
+                            <p className="text-[0.65rem] text-blue-600 font-black mt-1 uppercase">
+                              {v.duration ? `${v.duration}s stayed` : 'Ongoing...'}
+                            </p>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <button onClick={() => deleteVisitor(v.id)} className="text-red-600 hover:text-red-800 transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </main>
   )

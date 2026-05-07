@@ -4,7 +4,7 @@ const cors = require('cors');
 const fileUpload = require('express-fileupload');
 require('dotenv').config();
 
-const { Project, Blog, Contact, Peep } = require('./models');
+const { Project, Blog, Contact, Peep, Visitor } = require('./models');
 
 const app = express();
 
@@ -250,6 +250,82 @@ app.post('/api/seed', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// --- Visitor Tracking ---
+app.get('/api/visitors', async (req, res) => {
+  try {
+    const visitors = await Visitor.find().sort({ startTime: -1 });
+    res.json(visitors.map(v => ({ ...v.toObject(), id: v._id.toString() })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/visitors', async (req, res) => {
+  try {
+    const { path, screenWidth, screenHeight, language, id } = req.body;
+    
+    if (id) {
+      // Update existing session with duration
+      const visitor = await Visitor.findById(id);
+      if (visitor) {
+        visitor.endTime = new Date();
+        visitor.duration = Math.floor((visitor.endTime - visitor.startTime) / 1000);
+        await visitor.save();
+        return res.json({ ...visitor.toObject(), id: visitor._id.toString() });
+      }
+    }
+
+    // New session
+    let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (ip && ip.includes(',')) ip = ip.split(',')[0].trim();
+    
+    const userAgent = req.headers['user-agent'];
+    
+    let location = { city: 'Unknown', country: 'Unknown', region: 'Unknown' };
+    
+    // Attempt simple geolocation (skip for localhost)
+    if (ip && ip !== '127.0.0.1' && ip !== '::1' && !ip.startsWith('192.168.') && !ip.startsWith('10.')) {
+      try {
+        const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
+        const geoData = await geoRes.json();
+        if (geoData.city) {
+          location = { 
+            city: geoData.city, 
+            country: geoData.country_name, 
+            region: geoData.region 
+          };
+        }
+      } catch (geoErr) {
+        console.error('Geo error:', geoErr);
+      }
+    }
+
+    const newVisitor = new Visitor({
+      ip: ip || 'Unknown',
+      userAgent,
+      location,
+      path,
+      screenWidth,
+      screenHeight,
+      language
+    });
+
+    await newVisitor.save();
+    res.status(201).json({ ...newVisitor.toObject(), id: newVisitor._id.toString() });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/visitors/:id', async (req, res) => {
+  try {
+    await Visitor.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

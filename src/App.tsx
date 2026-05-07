@@ -6,7 +6,86 @@ import ProjectsPage from "./ProjectsPage";
 
 import type { SiteContent } from "./lib/types";
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+
+function VisitorTracker() {
+  const [consent, setConsent] = useState<boolean | null>(() => {
+    const saved = localStorage.getItem('analytics-consent');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [visitorId, setVisitorId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (consent === true) {
+      // Log visit
+      const logVisit = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/visitors`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              path: window.location.pathname,
+              screenWidth: window.screen.width,
+              screenHeight: window.screen.height,
+              language: navigator.language
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setVisitorId(data.id);
+          }
+        } catch (err) {
+          console.error('Tracking error:', err);
+        }
+      };
+
+      logVisit();
+
+      // Update duration on exit
+      const updateDuration = () => {
+        if (visitorId) {
+          navigator.sendBeacon(`${API_BASE}/visitors`, JSON.stringify({ id: visitorId }));
+        }
+      };
+
+      window.addEventListener('beforeunload', updateDuration);
+      return () => window.removeEventListener('beforeunload', updateDuration);
+    }
+  }, [consent, visitorId]);
+
+  if (consent === null) {
+    return (
+      <div className="fixed bottom-4 right-4 z-[9999] max-w-sm rounded-2xl border border-black bg-white p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+        <h3 className="mb-2 font-black uppercase">Analytics Consent</h3>
+        <p className="mb-4 text-xs leading-relaxed text-gray-600">
+          We collect anonymous data (IP, location, duration) to improve the experience. Is that okay?
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setConsent(true);
+              localStorage.setItem('analytics-consent', 'true');
+            }}
+            className="flex-1 border border-black bg-black px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-white hover:text-black"
+          >
+            YES, TRACK ME
+          </button>
+          <button
+            onClick={() => {
+              setConsent(false);
+              localStorage.setItem('analytics-consent', 'false');
+            }}
+            className="flex-1 border border-black bg-white px-4 py-2 text-xs font-bold text-black transition-colors hover:bg-black hover:text-white"
+          >
+            NO
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 function App() {
   const [siteContent, setSiteContent] = useState<SiteContent | null>(null);
@@ -228,7 +307,12 @@ function App() {
     );
   }
 
-  return <HomePage projects={siteContent.projects} blogs={siteContent.blogs} onContactSubmit={handleContactSubmit} />;
+  return (
+    <>
+      <VisitorTracker />
+      <HomePage projects={siteContent.projects} blogs={siteContent.blogs} onContactSubmit={handleContactSubmit} />
+    </>
+  );
 }
 
 export default App;

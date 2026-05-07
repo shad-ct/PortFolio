@@ -45,4 +45,23 @@ const peepSchema = new mongoose.Schema({
 
 const Peep = mongoose.model('Peep', peepSchema);
 
-module.exports = { Project, Blog, Contact, Peep };
+const visitorSchema = new mongoose.Schema({
+  ip: String,
+  userAgent: String,
+  location: {
+    city: String,
+    country: String,
+    region: String
+  },
+  path: String,
+  startTime: { type: Date, default: Date.now },
+  endTime: Date,
+  duration: Number, // in seconds
+  screenWidth: Number,
+  screenHeight: Number,
+  language: String
+});
+
+const Visitor = mongoose.model('Visitor', visitorSchema);
+
+module.exports = { Project, Blog, Contact, Peep, Visitor };
