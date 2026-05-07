@@ -1,41 +1,234 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
+import AdminPage from "./AdminPage";
+import BlogPage from "./BlogPage";
+import HomePage from "./HomePage";
+import ProjectsPage from "./ProjectsPage";
 
-import AdminPage from './AdminPage'
-import BlogPage from './BlogPage'
-import HomePage from './HomePage'
-import {
-  addBlogEntry,
-  addContactEntry,
-  addProjectEntry,
-  loadSiteContent,
-  saveSiteContent,
-} from './lib/siteData'
+import type { SiteContent } from "./lib/types";
+
+const API_BASE = 'http://localhost:5000/api';
 
 function App() {
-  const [siteContent, setSiteContent] = useState(() => loadSiteContent())
+  const [siteContent, setSiteContent] = useState<SiteContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch data from MongoDB on mount
   useEffect(() => {
-    saveSiteContent(siteContent)
-  }, [siteContent])
+    async function fetchData() {
+      try {
+        const [projectsRes, blogsRes, contactsRes, peepsRes] = await Promise.all([
+          fetch(`${API_BASE}/projects`),
+          fetch(`${API_BASE}/blogs`),
+          fetch(`${API_BASE}/contacts`),
+          fetch(`${API_BASE}/peeps`)
+        ]);
 
-  const pathname = typeof window === 'undefined' ? '/' : window.location.pathname.replace(/\/$/, '') || '/'
+        if (projectsRes.ok && blogsRes.ok && contactsRes.ok && peepsRes.ok) {
+          const projects = await projectsRes.json();
+          const blogs = await blogsRes.json();
+          const contacts = await contactsRes.json();
+          const peeps = await peepsRes.json();
+          // Set content strictly from MongoDB
+          setSiteContent({ projects, blogs, contacts, peeps });
+        } else {
+          console.error("Failed to fetch data from API. Is the backend running?");
+          setSiteContent({ projects: [], blogs: [], contacts: [], peeps: [] });
+        }
+      } catch (err) {
+        console.error("API connection error:", err);
+        setSiteContent({ projects: [], blogs: [], contacts: [], peeps: [] });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchData();
+  }, []);
 
-  if (pathname.startsWith('/blog/')) {
-    const slug = decodeURIComponent(pathname.split('/').filter(Boolean)[1] ?? '')
-    return <BlogPage blogs={siteContent.blogs} slug={slug} />
+  const handleAddProject = async (draft: any) => {
+    try {
+      const parsedImages = draft.images.split('\n').map((u: string) => u.trim()).filter(Boolean);
+      
+      const payload = {
+          title: draft.title.trim(),
+          description: draft.description.trim(),
+          link: draft.link.trim(),
+          githubLink: draft.githubLink?.trim() || "",
+          liveLink: draft.liveLink?.trim() || "",
+          tags: draft.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+          images: parsedImages,
+          bulletPoints: draft.bulletPoints.split('\n').map((b: string) => b.trim()).filter(Boolean),
+          isFeatured: draft.isFeatured || false
+      };
+
+      const res = await fetch(`${API_BASE}/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const newProject = await res.json();
+        setSiteContent(prev => prev ? { ...prev, projects: [newProject, ...prev.projects] } : null);
+      }
+    } catch (err) {
+      console.error("Error adding project:", err);
+    }
+  };
+
+  const handleAddBlog = async (draft: any) => {
+    try {
+       const slug = draft.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+       const payload = {
+          title: draft.title.trim(),
+          slug: slug || `post-${Date.now()}`,
+          excerpt: draft.excerpt.trim(),
+          content: draft.content.trim(),
+          tags: draft.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+          image: draft.image?.trim() || undefined,
+          publishedAt: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+       };
+
+       const res = await fetch(`${API_BASE}/blogs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const newBlog = await res.json();
+        setSiteContent(prev => prev ? { ...prev, blogs: [newBlog, ...prev.blogs] } : null);
+      }
+    } catch (err) {
+      console.error("Error adding blog:", err);
+    }
+  };
+
+  const handleContactSubmit = async (formData: any) => {
+       try {
+           const res = await fetch(`${API_BASE}/contacts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+           });
+           if(res.ok) {
+               // Assuming you don't need to immediately update frontend state for contacts unless admin page is open
+           }
+       } catch (err) {
+           console.error("Contact submission error", err);
+           throw err;
+       }
   }
 
-  if (pathname === '/admin') {
+  const handleAddPeep = async (draft: any) => {
+    try {
+      const res = await fetch(`${API_BASE}/peeps`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(draft)
+      });
+      if (res.ok) {
+        const newPeep = await res.json();
+        setSiteContent(prev => prev ? { ...prev, peeps: [newPeep, ...(prev.peeps || [])] } : null);
+      }
+    } catch (err) {
+      console.error("Error adding peep:", err);
+    }
+  };
+
+  const handleUpdateProject = async (id: string, data: any) => {
+    try {
+      const res = await fetch(`${API_BASE}/projects/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      if (res.ok) {
+        const updated = await res.json();
+        setSiteContent(prev => prev ? { ...prev, projects: prev.projects.map(p => p.id === id ? updated : p) } : null);
+      }
+    } catch (err) { console.error("Error updating project:", err); }
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' });
+      if (res.ok) setSiteContent(prev => prev ? { ...prev, projects: prev.projects.filter(p => p.id !== id) } : null);
+    } catch (err) { console.error("Error deleting project:", err); }
+  };
+
+  const handleUpdateBlog = async (id: string, data: any) => {
+    try {
+      const res = await fetch(`${API_BASE}/blogs/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      if (res.ok) {
+        const updated = await res.json();
+        setSiteContent(prev => prev ? { ...prev, blogs: prev.blogs.map(b => b.id === id ? updated : b) } : null);
+      }
+    } catch (err) { console.error("Error updating blog:", err); }
+  };
+
+  const handleDeleteBlog = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/blogs/${id}`, { method: 'DELETE' });
+      if (res.ok) setSiteContent(prev => prev ? { ...prev, blogs: prev.blogs.filter(b => b.id !== id) } : null);
+    } catch (err) { console.error("Error deleting blog:", err); }
+  };
+
+  const handleDeleteContact = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/contacts/${id}`, { method: 'DELETE' });
+      if (res.ok) setSiteContent(prev => prev ? { ...prev, contacts: prev.contacts.filter(c => c.id !== id) } : null);
+    } catch (err) { console.error("Error deleting contact:", err); }
+  };
+
+  const handleUpdatePeep = async (id: string, data: any) => {
+    try {
+      const res = await fetch(`${API_BASE}/peeps/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      if (res.ok) {
+        const updated = await res.json();
+        setSiteContent(prev => prev ? { ...prev, peeps: (prev.peeps || []).map(p => p.id === id ? updated : p) } : null);
+      }
+    } catch (err) { console.error("Error updating peep:", err); }
+  };
+
+  const handleDeletePeep = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/peeps/${id}`, { method: 'DELETE' });
+      if (res.ok) setSiteContent(prev => prev ? { ...prev, peeps: (prev.peeps || []).filter(p => p.id !== id) } : null);
+    } catch (err) { console.error("Error deleting peep:", err); }
+  };
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#f4efe7]">Loading...</div>;
+  }
+
+  if (!siteContent) return null;
+
+  const pathname = typeof window === "undefined" ? "/" : window.location.pathname.replace(/\/$/, "") || "/";
+
+  if (pathname.startsWith("/blog/")) {
+    const slug = decodeURIComponent(pathname.split("/").filter(Boolean)[1] ?? "");
+    return <BlogPage blogs={siteContent.blogs} slug={slug} />;
+  }
+
+  if (pathname === "/projects") {
+    // We need to import ProjectsPage (we will do this at the top)
+    return <ProjectsPage projects={siteContent.projects} />;
+  }
+
+  if (pathname === "/admin") {
     return (
       <AdminPage
         content={siteContent}
-        onAddProject={(draft) => setSiteContent((currentContent) => addProjectEntry(currentContent, draft))}
-        onAddBlog={(draft) => setSiteContent((currentContent) => addBlogEntry(currentContent, draft))}
+        onAddProject={handleAddProject}
+        onAddBlog={handleAddBlog}
+        onAddPeep={handleAddPeep}
+        onUpdateProject={handleUpdateProject}
+        onDeleteProject={handleDeleteProject}
+        onUpdateBlog={handleUpdateBlog}
+        onDeleteBlog={handleDeleteBlog}
+        onDeleteContact={handleDeleteContact}
+        onUpdatePeep={handleUpdatePeep}
+        onDeletePeep={handleDeletePeep}
       />
-    )
+    );
   }
 
-  return <HomePage projects={siteContent.projects} blogs={siteContent.blogs} onContactSubmit={(draft) => setSiteContent((currentContent) => addContactEntry(currentContent, draft))} />
+  return <HomePage projects={siteContent.projects} blogs={siteContent.blogs} onContactSubmit={handleContactSubmit} />;
 }
 
-export default App
+export default App;

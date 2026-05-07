@@ -1,288 +1,561 @@
-import { useState, type FormEvent } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowUpRight, Download, Mail, MapPin, PhoneCall, X, ChevronLeft, ChevronRight, Images } from 'lucide-react'
 
-import type { BlogEntry, ContactDraft, ProjectEntry } from './lib/siteData'
-
-type HomePageProps = {
-  projects: ProjectEntry[]
-  blogs: BlogEntry[]
-  onContactSubmit: (draft: ContactDraft) => void
+import type { ProjectEntry } from './lib/types'
+import { resumeProfile } from './lib/types'
+function SectionHeading({ title }: { title: string }) {
+  return <h2 className="text-[0.9rem] font-black tracking-[0.24em] text-black uppercase sm:text-[1rem]">{title}</h2>
 }
 
-export default function HomePage({ projects, blogs, onContactSubmit }: HomePageProps) {
-  const [statusMessage, setStatusMessage] = useState('')
+function Pill({ children }: { children: string }) {
+  return (
+    <span className="inline-flex items-center justify-center rounded-full border border-black/80 px-3.5 py-1.5 text-[0.68rem] leading-none text-black transition-colors duration-200 hover:bg-black hover:text-[#f4efe7] sm:px-4 sm:py-2 sm:text-sm">
+      {children}
+    </span>
+  )
+}
 
-  function handleContactSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+function GithubLogo() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-3.5 w-3.5 sm:h-4 sm:w-4">
+      <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.68c-2.78.61-3.37-1.18-3.37-1.18a2.65 2.65 0 0 0-1.11-1.47c-.91-.62.07-.61.07-.61a2.1 2.1 0 0 1 1.53 1.03 2.13 2.13 0 0 0 2.91.83 2.13 2.13 0 0 1 .64-1.34c-2.22-.25-4.56-1.11-4.56-4.92a3.83 3.83 0 0 1 1.02-2.66 3.56 3.56 0 0 1 .1-2.62s.83-.27 2.73 1.02a9.41 9.41 0 0 1 4.97 0c1.9-1.29 2.73-1.02 2.73-1.02a3.56 3.56 0 0 1 .1 2.62 3.83 3.83 0 0 1 1.02 2.66c0 3.82-2.35 4.67-4.58 4.91a2.39 2.39 0 0 1 .69 1.86v2.76c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
+    </svg>
+  )
+}
 
-    const formData = new FormData(event.currentTarget)
-    const draft = {
-      name: String(formData.get('name') ?? '').trim(),
-      email: String(formData.get('email') ?? '').trim(),
-      subject: String(formData.get('subject') ?? '').trim(),
-      message: String(formData.get('message') ?? '').trim(),
-    }
+function LinkedinLogo() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-3.5 w-3.5 sm:h-4 sm:w-4">
+      <path d="M6.94 6.5a1.94 1.94 0 1 1 0-3.88 1.94 1.94 0 0 1 0 3.88ZM5.14 9h3.6v11H5.14V9ZM10.67 9h3.45v1.5h.05A3.78 3.78 0 0 1 17.58 8.7c3.77 0 4.47 2.48 4.47 5.71V20h-3.6v-4.97c0-1.18-.02-2.7-1.65-2.7-1.66 0-1.9 1.3-1.9 2.61V20h-3.6V9Z" />
+    </svg>
+  )
+}
 
-    if (!draft.name || !draft.email || !draft.subject || !draft.message) {
-      setStatusMessage('Please complete all fields before sending.')
-      return
-    }
+function TelegramLogo() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-3.5 w-3.5 sm:h-4 sm:w-4">
+      <path d="M21.8 4.6 18.7 19c-.23 1.03-.85 1.28-1.72.79l-4.77-3.52-2.3 2.22c-.26.26-.49.49-.99.49l.34-4.86 8.84-7.99c.38-.34-.08-.53-.59-.19L6.27 13.8l-4.77-1.49c-1.04-.33-1.06-1.04.22-1.53L20.4 3.02c.92-.33 1.72.21 1.4 1.58Z" />
+    </svg>
+  )
+}
 
-    onContactSubmit(draft)
-    event.currentTarget.reset()
-    setStatusMessage('Message sent. I will get back to you soon.')
+function ContactItem({ label, value, href }: { label: string; value: string; href: string }) {
+  return (
+    <a
+      href={href}
+      className="group flex items-center gap-2.5 rounded-[1.5rem] border border-black/15 bg-white/35 px-3 py-2.5 transition-transform duration-200 hover:-translate-y-0.5 hover:border-black/35 hover:bg-white/60 sm:gap-3 sm:px-4 sm:py-3"
+      target={href.startsWith('http') ? '_blank' : undefined}
+      rel={href.startsWith('http') ? 'noreferrer' : undefined}
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/70 bg-[#f4efe7] text-black sm:h-10 sm:w-10">
+        {label === 'Phone' ? <PhoneCall className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : null}
+        {label === 'Email' ? <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : null}
+        {label === 'Location' ? <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : null}
+        {label === 'GitHub' ? <GithubLogo /> : null}
+        {label === 'LinkedIn' ? <LinkedinLogo /> : null}
+        {label === 'Telegram' ? <TelegramLogo /> : null}
+      </div>
+      <div className="min-w-0">
+        <p className="text-[0.55rem] font-semibold tracking-[0.24em] text-black/60 uppercase sm:text-[0.65rem]">{label}</p>
+        <p className="truncate text-[0.82rem] font-bold text-black group-hover:underline sm:text-base">{value}</p>
+      </div>
+    </a>
+  )
+}
+
+function TimelineItem({
+  title,
+  subtitle,
+  period,
+  isLast = false,
+}: {
+  title: string
+  subtitle: string
+  period: string
+  isLast?: boolean
+}) {
+  return (
+    <article className="relative flex gap-4">
+      {/* Connector column */}
+      <div className="relative flex flex-col items-center" style={{ minWidth: '1.5rem' }}>
+        {/* Dot */}
+        <span
+          className="relative z-10 mt-1 h-3 w-3 shrink-0 rounded-full border-2 border-black bg-[#f4efe7] shadow-[0_0_0_3px_rgba(0,0,0,0.08)]"
+        />
+        {/* Vertical line below dot */}
+        {!isLast && (
+          <span className="mt-1 flex-1 w-px bg-gradient-to-b from-black/30 to-black/05" />
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="pb-6">
+        <p className="text-[0.78rem] font-semibold tracking-[0.15em] text-black/40 uppercase mb-0.5">{period}</p>
+        <p className="text-[0.88rem] font-black tracking-[0.08em] text-black uppercase leading-tight">{title}</p>
+        <p className="mt-1 text-[0.82rem] text-black/65 leading-snug">{subtitle}</p>
+      </div>
+    </article>
+  )
+}
+
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+function Lightbox({
+  images,
+  startIndex,
+  title,
+  onClose,
+}: {
+  images: string[]
+  startIndex: number
+  title: string
+  onClose: () => void
+}) {
+  const [current, setCurrent] = useState(startIndex)
+
+  function prev() {
+    setCurrent((c) => (c - 1 + images.length) % images.length)
+  }
+  function next() {
+    setCurrent((c) => (c + 1) % images.length)
+  }
+
+  function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onClose()
   }
 
   return (
-    <main className="min-h-screen bg-white text-black [font-family:var(--font-space-grotesk),sans-serif]">
-      <nav className="sticky top-0 z-50 border-b border-black bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-8 py-6">
-          <div className="text-center">
-            <p className="text-xs tracking-widest">ALEX RIVERA</p>
-            <p className="text-xs tracking-widest text-gray-600">FULL STACK DEVELOPER</p>
-          </div>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${title} gallery`}
+    >
+      {/* Close */}
+      <button
+        onClick={onClose}
+        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20"
+        aria-label="Close gallery"
+      >
+        <X className="h-4 w-4" />
+      </button>
 
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm font-medium tracking-[0.22em] uppercase text-gray-700 md:text-base">
-            <a href="#skills" className="transition-colors hover:text-black">
-              Skills
-            </a>
-            <a href="#projects" className="transition-colors hover:text-black">
-              Projects
-            </a>
-            <a href="#about" className="transition-colors hover:text-black">
-              About
-            </a>
-            <a href="#contact" className="transition-colors hover:text-black">
-              Contact
-            </a>
-            <a href="#blog" className="transition-colors hover:text-black">
-              Blog
-            </a>
-          </div>
+      {/* Counter */}
+      <p className="absolute top-4 left-1/2 -translate-x-1/2 text-[0.65rem] font-semibold tracking-[0.25em] text-white/60 uppercase">
+        {title} &nbsp;·&nbsp; {current + 1} / {images.length}
+      </p>
+
+      {/* Main image */}
+      <div className="relative flex max-h-[80vh] max-w-[90vw] items-center justify-center">
+        {images.length > 1 && (
+          <button
+            onClick={prev}
+            className="absolute -left-12 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20"
+            aria-label="Previous image"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
+
+        <img
+          src={images[current]}
+          alt={`${title} screenshot ${current + 1}`}
+          className="max-h-[75vh] max-w-[82vw] rounded-2xl border border-white/10 object-contain shadow-2xl"
+          key={current}
+        />
+
+        {images.length > 1 && (
+          <button
+            onClick={next}
+            className="absolute -right-12 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20"
+            aria-label="Next image"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Dot indicators */}
+      {images.length > 1 && (
+        <div className="absolute bottom-6 flex gap-2">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              aria-label={`Go to image ${i + 1}`}
+              className={`h-1.5 rounded-full transition-all duration-200 ${
+                i === current ? 'w-6 bg-white' : 'w-1.5 bg-white/35 hover:bg-white/60'
+              }`}
+            />
+          ))}
         </div>
-      </nav>
+      )}
+    </div>
+  )
+}
 
-      <section className="mx-auto max-w-6xl px-8 py-32">
-        <div className="mb-24">
-          <p className="mb-8 text-xs tracking-widest text-gray-600">INTRODUCTION</p>
-          <h1 className="mb-12 text-7xl font-bold leading-tight md:text-8xl">ALEX RIVERA</h1>
-          <p className="mb-12 max-w-3xl text-2xl leading-loose">
-            Full-stack developer building elegant digital experiences with modern web technologies. Focused on
-            performance, accessibility, and thoughtful design.
-          </p>
-          <p className="max-w-2xl text-lg text-gray-600">
-            Currently exploring AI-powered applications and scalable cloud architecture. Available for interesting
-            projects and collaborations.
-          </p>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl border-t border-black px-8 py-8" />
-
-      <section id="skills" className="mx-auto max-w-6xl scroll-mt-28 px-8 py-24">
-        <p className="mb-16 text-sm font-medium tracking-[0.22em] text-gray-600 uppercase">TECHNICAL SKILLS</p>
-        <div className="grid gap-20 md:grid-cols-2">
-          <div>
-            <h3 className="mb-8 text-2xl font-bold tracking-wide">FRONTEND</h3>
-            <p className="text-lg leading-relaxed text-gray-700">React / TypeScript / Vite / Tailwind CSS / Framer Motion</p>
-          </div>
-          <div>
-            <h3 className="mb-8 text-2xl font-bold tracking-wide">BACKEND</h3>
-            <p className="text-lg leading-relaxed text-gray-700">Node.js / PostgreSQL / API Design / Authentication</p>
-          </div>
-          <div>
-            <h3 className="mb-8 text-2xl font-bold tracking-wide">TOOLS & DevOps</h3>
-            <p className="text-lg leading-relaxed text-gray-700">Git / Docker / Vercel / AWS / GitHub Actions</p>
-          </div>
-          <div>
-            <h3 className="mb-8 text-2xl font-bold tracking-wide">DATABASES</h3>
-            <p className="text-lg leading-relaxed text-gray-700">PostgreSQL / Supabase / Redis / MongoDB</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl border-t border-black px-8 py-8" />
-
-      <section id="projects" className="mx-auto max-w-6xl scroll-mt-28 px-8 py-24">
-        <p className="mb-16 text-sm font-medium tracking-[0.22em] text-gray-600 uppercase">PROJECTS</p>
-
-        <div className="space-y-24">
-          {projects.map((project) => (
-            <article key={project.id} className="border-b border-gray-300 pb-24 last:border-b-0 last:pb-0">
-              <div className="mb-8 grid items-start gap-12 md:grid-cols-3">
-                <div className="col-span-2">
-                  <h3 className="mb-6 text-4xl font-bold">{project.title}</h3>
-                  <p className="mb-4 text-lg leading-relaxed text-gray-700">{project.description}</p>
-                  <p className="mb-6 text-sm tracking-widest text-gray-600">
-                    {project.tags.map((tag) => tag.toUpperCase()).join(' • ')}
-                  </p>
-                </div>
-                {project.image ? (
-                  <img
-                    src={project.image}
-                    alt={project.title}
-                    className="h-48 w-full border border-black object-cover"
-                  />
-                ) : (
-                  <div className="h-48 border border-black bg-gray-100" />
-                )}
+// ── ProjectGallery strip ──────────────────────────────────────────────────────
+function ProjectGallery({ images, title, onOpen }: { images: string[]; title: string; onOpen: (i: number) => void }) {
+  return (
+    <div className="-mx-4 sm:-mx-5 mb-0">
+      <div className="relative overflow-hidden rounded-t-[1.35rem]">
+        {/* Horizontal scrollable strip */}
+        <div
+          className="flex gap-1.5 overflow-x-auto px-4 py-3 sm:px-5"
+          style={{ scrollbarWidth: 'none' }}
+        >
+          {images.map((src, i) => (
+            <button
+              key={src}
+              onClick={() => onOpen(i)}
+              className="group relative h-24 w-36 shrink-0 overflow-hidden rounded-xl border border-black/12 bg-black/5 shadow-sm transition-all duration-200 hover:scale-[1.03] hover:border-black/30 hover:shadow-md sm:h-28 sm:w-44"
+              aria-label={`View ${title} image ${i + 1}`}
+            >
+              <img
+                src={src}
+                alt={`${title} ${i + 1}`}
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+              {/* Hover overlay */}
+              <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-200 group-hover:bg-black/25">
+                <Images className="h-5 w-5 text-white opacity-0 drop-shadow-lg transition-opacity duration-200 group-hover:opacity-100" />
               </div>
+              {/* Index badge */}
+              <span className="absolute bottom-1 right-1.5 rounded-full bg-black/50 px-1.5 py-0.5 text-[0.5rem] font-bold tracking-wider text-white/80 backdrop-blur-sm">
+                {i + 1}/{images.length}
+              </span>
+            </button>
+          ))}
+        </div>
+        {/* Bottom fade rule */}
+        <div className="absolute bottom-0 inset-x-0 h-px bg-black/10" />
+      </div>
+    </div>
+  )
+}
 
-              <ul className="mb-8 max-w-2xl space-y-2 text-sm text-gray-700">
-                {project.bulletPoints.map((bulletPoint) => (
-                  <li key={bulletPoint}>• {bulletPoint}</li>
-                ))}
-              </ul>
+// ── ProjectCard ───────────────────────────────────────────────────────────────
+export function ProjectCard({ project }: { project: ProjectEntry }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const images = project.images ?? []
 
+  return (
+    <>
+      <article className="flex h-full flex-col rounded-[1.6rem] border border-black/15 bg-white/50 shadow-[0_12px_30px_rgba(17,17,17,0.05)] transition-transform duration-200 hover:-translate-y-0.5 overflow-hidden">
+        {/* Gallery strip at top (if images exist) */}
+        {images.length > 0 && (
+          <ProjectGallery images={images} title={project.title} onOpen={(i) => setLightboxIndex(i)} />
+        )}
+
+        {/* Card body */}
+        <div className="flex flex-1 flex-col p-4 sm:p-5">
+          <p className="text-[0.55rem] font-semibold tracking-[0.28em] text-black/55 uppercase sm:text-[0.65rem]">Project</p>
+          <h3 className="mt-1.5 text-[0.88rem] font-black tracking-[0.07em] text-black uppercase sm:text-[1rem]">
+            {project.title}
+          </h3>
+          <p className="mt-2 text-[0.8rem] leading-5 text-black/75 sm:text-sm sm:leading-6">{project.description}</p>
+          <div className="mt-3 flex flex-wrap gap-1.5 text-[0.55rem] font-semibold tracking-[0.14em] text-black/55 uppercase sm:gap-2 sm:text-[0.65rem]">
+            {project.tags.map((tag) => (
+              <span key={tag} className="rounded-full border border-black/15 px-2 py-0.5 sm:px-2.5 sm:py-1">
+                {tag}
+              </span>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2 sm:mt-auto sm:pt-4">
+            <a
+              href={project.link}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-black bg-black px-4 py-2 text-[0.6rem] font-semibold tracking-[0.18em] text-[#f4efe7] transition-colors hover:bg-[#f4efe7] hover:text-black sm:px-4 sm:py-2 sm:text-[0.68rem]"
+            >
+              VIEW PROJECT
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </a>
+            {project.githubLink && (
               <a
-                href={project.link}
+                href={project.githubLink}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 border border-black bg-transparent px-3 py-2 text-sm font-medium transition-colors hover:bg-black hover:text-white"
+                className="inline-flex items-center gap-2 rounded-full border border-black/20 px-3.5 py-2 text-[0.6rem] font-semibold tracking-[0.16em] text-black/70 transition-colors hover:border-black/40 hover:text-black sm:text-[0.65rem]"
               >
-                VIEW PROJECT <ArrowRight className="h-3 w-3" />
+                GITHUB
               </a>
-            </article>
-          ))}
+            )}
+            {project.liveLink && (
+              <a
+                href={project.liveLink}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-black/20 px-3.5 py-2 text-[0.6rem] font-semibold tracking-[0.16em] text-black/70 transition-colors hover:border-black/40 hover:text-black sm:text-[0.65rem]"
+              >
+                LIVE
+              </a>
+            )}
+            {images.length > 0 && (
+              <button
+                onClick={() => setLightboxIndex(0)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-black/20 px-3.5 py-2 text-[0.6rem] font-semibold tracking-[0.16em] text-black/70 transition-colors hover:border-black/40 hover:text-black sm:text-[0.65rem]"
+              >
+                <Images className="h-3 w-3" />
+                {images.length} PHOTOS
+              </button>
+            )}
+          </div>
         </div>
-      </section>
+      </article>
 
-      <section className="mx-auto max-w-6xl border-t border-black px-8 py-8" />
+      {/* Lightbox portal */}
+      {lightboxIndex !== null && (
+        <Lightbox
+          images={images}
+          startIndex={lightboxIndex}
+          title={project.title}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
+    </>
+  )
+}
 
-      <section id="about" className="mx-auto max-w-6xl scroll-mt-28 px-8 py-24">
-        <p className="mb-8 text-sm font-medium tracking-[0.22em] text-gray-600 uppercase">ABOUT</p>
-        <div className="max-w-3xl space-y-8">
-          <p className="text-lg leading-loose text-gray-700">
-            I am a full-stack developer passionate about building beautiful, performant web applications that solve real
-            problems.
+// ── BlogCard ─────────────────────────────────────────────────────────────────
+function BlogCard({ blog }: { blog: import('./lib/types').BlogEntry }) {
+  return (
+    <a
+      href={`/blog/${blog.slug}`}
+      className="group flex flex-col gap-3 rounded-[1.6rem] border border-black/15 bg-white/50 p-4 shadow-[0_12px_30px_rgba(17,17,17,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-black/25 hover:shadow-md sm:p-5"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[0.55rem] font-semibold tracking-[0.28em] text-black/55 uppercase sm:text-[0.65rem]">
+            {blog.publishedAt}
           </p>
-          <p className="text-lg leading-loose text-gray-700">
-            Currently exploring AI-powered products and scalable cloud architecture. Focused on performance,
-            accessibility, and user experience at every level.
-          </p>
-          <p className="text-lg leading-loose text-gray-700">
-            Always eager to collaborate on interesting projects and mentor junior developers. Lets build something
-            great together.
-          </p>
+          <h3 className="mt-1 text-[0.88rem] font-black tracking-[0.05em] text-black group-hover:underline sm:text-[1rem]">
+            {blog.title}
+          </h3>
         </div>
-      </section>
+        <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-black/40 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" />
+      </div>
+      <p className="text-[0.8rem] leading-5 text-black/70 sm:text-sm sm:leading-6">{blog.excerpt}</p>
+      <div className="mt-auto flex flex-wrap gap-1.5 text-[0.55rem] font-semibold tracking-[0.14em] text-black/50 uppercase sm:gap-2 sm:text-[0.65rem]">
+        {blog.tags.map((tag) => (
+          <span key={tag} className="rounded-full border border-black/12 px-2 py-0.5 sm:px-2.5 sm:py-1">
+            {tag}
+          </span>
+        ))}
+      </div>
+    </a>
+  )
+}
 
-      <section className="mx-auto max-w-6xl border-t border-black px-8 py-8" />
+type HomePageProps = {
+  projects: ProjectEntry[]
+  blogs: import('./lib/types').BlogEntry[]
+  onContactSubmit?: (data: any) => Promise<void>
+}
 
-      <section id="contact" className="mx-auto max-w-6xl scroll-mt-28 px-8 py-24">
-        <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-          <div className="space-y-12">
-            <div>
-              <p className="mb-4 text-sm font-medium tracking-[0.22em] text-gray-600 uppercase">GET IN TOUCH</p>
-              <h2 className="text-4xl font-bold">Send a message</h2>
+export default function HomePage({ projects, blogs, onContactSubmit }: HomePageProps) {
+  function handleDownload() {
+    window.print()
+  }
+
+  return (
+    <main className="min-h-screen px-3 py-3 text-black sm:px-4 md:px-6 lg:px-8 lg:py-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:gap-5">
+        {/* ── Hero grid: left column (bio + contacts + education) | right column (photo + skills) ── */}
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(260px,0.95fr)] lg:items-stretch xl:gap-8">
+          {/* Left column */}
+          <div className="space-y-4 sm:space-y-5">
+            <div className="space-y-2.5 sm:space-y-3">
+              <p className="text-[0.6rem] font-semibold tracking-[0.35em] text-black/65 uppercase sm:text-xs">Portfolio</p>
+              <h1 className="max-w-[6ch] text-[clamp(2.9rem,8vw,6.1rem)] leading-[0.82] font-black tracking-[-0.09em] text-black uppercase [font-family:var(--font-display)]">
+                {resumeProfile.name}
+              </h1>
+              <p className="text-[clamp(0.78rem,1.8vw,1rem)] font-black tracking-[0.22em] text-black uppercase">
+                {resumeProfile.title}
+              </p>
             </div>
 
-            <div className="grid gap-10 sm:grid-cols-3 lg:grid-cols-1">
-              <div>
-                <a href="mailto:hello@alex.dev" className="group">
-                  <p className="mb-4 text-xs tracking-widest text-gray-600">EMAIL</p>
-                  <p className="text-2xl font-bold group-hover:underline">hello@alex.dev</p>
-                </a>
+            <p className="max-w-2xl text-[0.82rem] leading-6 text-black/78 sm:text-[0.92rem] sm:leading-7 md:text-[0.98rem]">
+              {resumeProfile.summary}
+            </p>
+
+            <div className="grid gap-2 sm:grid-cols-2 sm:gap-2.5">
+              {resumeProfile.contacts.map((contact) => (
+                <ContactItem key={contact.label} {...contact} />
+              ))}
+            </div>
+
+            {/* Education — visible on all screen sizes */}
+            <div className="space-y-1">
+              <SectionHeading title="Education" />
+              <div className="mt-3">
+                {resumeProfile.education.map((item, i) => (
+                  <TimelineItem
+                    key={`${item.institution}-${item.period}`}
+                    title={item.institution}
+                    subtitle={item.qualification}
+                    period={item.period}
+                    isLast={i === resumeProfile.education.length - 1}
+                  />
+                ))}
               </div>
-              <div>
-                <a href="#" className="group">
-                  <p className="mb-4 text-xs tracking-widest text-gray-600">LINKEDIN</p>
-                  <p className="text-2xl font-bold group-hover:underline">linkedin.com/in/alexrivera</p>
-                </a>
-              </div>
-              <div>
-                <a href="#" className="group">
-                  <p className="mb-4 text-xs tracking-widest text-gray-600">GITHUB</p>
-                  <p className="text-2xl font-bold group-hover:underline">github.com/alexrivera</p>
-                </a>
+            </div>
+
+            {/* Experience — visible on all screen sizes */}
+            <div className="space-y-1">
+              <SectionHeading title="Experience" />
+              <div className="mt-3">
+                {resumeProfile.experience.map((item, i) => (
+                  <TimelineItem
+                    key={`${item.company}-${item.period}`}
+                    title={item.company}
+                    subtitle={item.role}
+                    period={item.period}
+                    isLast={i === resumeProfile.experience.length - 1}
+                  />
+                ))}
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleContactSubmit} className="grid gap-6 rounded-2xl border border-black p-6 md:p-8">
-            <div className="grid gap-6 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium text-gray-800">
-                Name
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="Your name"
-                  className="border-b border-black bg-transparent px-0 py-3 text-base outline-none placeholder:text-gray-400 focus:border-gray-600"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium text-gray-800">
-                Email
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="you@example.com"
-                  className="border-b border-black bg-transparent px-0 py-3 text-base outline-none placeholder:text-gray-400 focus:border-gray-600"
-                />
-              </label>
+          {/* Right column */}
+          <div className="lg:pl-4 xl:pl-8 lg:pt-1 space-y-4 sm:space-y-6 flex flex-col items-center lg:items-start lg:h-full">
+            <div className="relative overflow-hidden rounded-[1.85rem] border border-black/15 bg-[linear-gradient(180deg,#c9c9c9_0%,#ededed_58%,#d6d6d6_100%)] shadow-[0_18px_50px_rgba(17,17,17,0.08)] w-full max-w-[16rem] sm:max-w-[18rem] lg:max-w-full lg:flex-1 lg:min-h-0">
+              <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/10 to-transparent" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(255,255,255,0.4)_0%,rgba(255,255,255,0.08)_26%,transparent_52%)]" />
+              <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.18)_0,rgba(255,255,255,0.18)_1px,transparent_1px,transparent_18px)] opacity-30" />
+              <div className="absolute inset-x-10 top-12 h-28 rounded-full bg-black/10 blur-3xl" />
+              <div className="relative flex aspect-[0.72/1] lg:aspect-auto lg:h-full items-center justify-center px-4 py-4 sm:px-5 sm:py-5">
+                <div className="relative h-full w-full overflow-hidden rounded-[1.25rem] border border-black/10 bg-[#f4efe7] shadow-[0_8px_24px_rgba(17,17,17,0.16)]">
+                  <img
+                    src="/profile.png"
+                    alt="Shad C T"
+                    className="h-full w-full object-cover object-center grayscale contrast-105"
+                  />
+                </div>
+              </div>
             </div>
 
-            <label className="grid gap-2 text-sm font-medium text-gray-800">
-              Subject
-              <input
-                type="text"
-                name="subject"
-                placeholder="Project inquiry"
-                className="border-b border-black bg-transparent px-0 py-3 text-base outline-none placeholder:text-gray-400 focus:border-gray-600"
-              />
-            </label>
+            <div className="grid content-start gap-4 sm:gap-5 w-full max-w-[16rem] sm:max-w-[18rem] lg:max-w-full">
+              <div className="space-y-3 sm:space-y-4">
+                <SectionHeading title="Skills" />
+                <div className="flex flex-wrap gap-2 sm:gap-2.5">
+                  {resumeProfile.skills.map((skill) => (
+                    <Pill key={skill}>{skill}</Pill>
+                  ))}
+                </div>
+              </div>
 
-            <label className="grid gap-2 text-sm font-medium text-gray-800">
-              Message
-              <textarea
-                name="message"
-                rows={6}
-                placeholder="Tell me a bit about what you're building..."
-                className="border-b border-black bg-transparent px-0 py-3 text-base outline-none placeholder:text-gray-400 focus:border-gray-600"
-              />
-            </label>
+              <div className="space-y-3 sm:space-y-4">
+                <SectionHeading title="Interests" />
+                <div className="flex flex-wrap gap-2 sm:gap-2.5">
+                  {resumeProfile.interests.map((interest) => (
+                    <Pill key={interest}>{interest}</Pill>
+                  ))}
+                </div>
+              </div>
 
-            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-              <p className="text-xs tracking-widest text-gray-600">{statusMessage || 'I WILL GET BACK TO YOU SOON'}</p>
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-white hover:text-black"
-              >
-                SEND MESSAGE
-                <ArrowRight className="h-3 w-3" />
-              </button>
+              <div className="space-y-3 sm:space-y-4">
+                <SectionHeading title="Languages" />
+                <div className="space-y-1.5 text-[0.68rem] tracking-[0.2em] text-black uppercase sm:text-sm">
+                  {resumeProfile.languages.map((language) => (
+                    <p key={language}>{language}</p>
+                  ))}
+                </div>
+              </div>
             </div>
-          </form>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      <section id="blog" className="mx-auto max-w-6xl scroll-mt-28 border-t border-black px-8 py-24">
-        <p className="mb-8 text-sm font-medium tracking-[0.22em] text-gray-600 uppercase">BLOG</p>
-        <div className="grid gap-8 md:grid-cols-3">
-          {blogs.slice(0, 3).map((blog) => (
-            <article key={blog.id} className="space-y-3">
-              <p className="text-xs tracking-widest text-gray-600">{blog.publishedAt}</p>
-              <h3 className="text-2xl font-bold">{blog.title}</h3>
-              <p className="text-sm leading-relaxed text-gray-700">{blog.excerpt}</p>
-              <a
-                href={`/blog/${blog.slug}`}
-                className="inline-flex items-center gap-2 text-xs tracking-widest text-black underline underline-offset-4"
-              >
-                READ MORE
-                <ArrowRight className="h-3 w-3" />
+        {/* ── Projects ── */}
+        <section className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
+          <SectionHeading title="Featured Projects" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2 lg:gap-5 xl:gap-6">
+            {projects.filter(p => p.isFeatured).slice(0, 4).map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+          {projects.length > projects.filter(p => p.isFeatured).slice(0, 4).length && (
+            <div className="flex justify-center mt-6">
+              <a href="/projects" className="inline-flex items-center gap-2 rounded-full border border-black/15 bg-white px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-black hover:text-white">
+                View All Projects
               </a>
-            </article>
-          ))}
-        </div>
-      </section>
+            </div>
+          )}
+        </section>
 
-      <footer className="border-t border-black">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-8 py-12 text-xs tracking-widest">
-          <p>© {new Date().getFullYear()} ALEX RIVERA</p>
-          <a href="/admin" className="hover:opacity-70">
-            ADMIN
-          </a>
-        </div>
-      </footer>
+        {/* ── Blog ── */}
+        {blogs.length > 0 && (
+          <section className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
+            <SectionHeading title="Blog" />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2 lg:gap-5 xl:gap-6">
+              {blogs.map((blog) => (
+                <BlogCard key={blog.id} blog={blog} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Get in Touch ── */}
+        <section className="print:hidden mt-2 space-y-4 rounded-[1.5rem] border border-black/15 bg-white/35 p-5 shadow-[0_12px_30px_rgba(17,17,17,0.05)] sm:p-6">
+          <SectionHeading title="Get in Touch" />
+          <form className="space-y-4" onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const formData = new FormData(form);
+              const data = {
+                  name: formData.get('name') as string,
+                  email: formData.get('email') as string,
+                  subject: 'Contact Form Submission', // Default subject
+                  message: formData.get('message') as string
+              };
+              // Note: Make sure HomePageProps includes onContactSubmit
+              if(typeof onContactSubmit === 'function'){
+                  onContactSubmit(data).then(() => {
+                      alert('Message sent successfully!');
+                      form.reset();
+                  }).catch(() => {
+                      alert('Failed to send message.');
+                  });
+              } else {
+                 console.log("Form data (no API bound):", data);
+                 form.reset();
+                 alert('Message sent locally!');
+              }
+          }}>
+            <div className="space-y-2">
+              <label htmlFor="name" className="text-[0.68rem] font-semibold tracking-[0.15em] text-black/60 uppercase">Name</label>
+              <input type="text" id="name" name="name" required className="w-full rounded-xl border border-black/20 bg-transparent px-4 py-2 text-sm text-black placeholder:text-black/40 focus:border-black focus:outline-none focus:ring-1 focus:ring-black" placeholder="John Doe" />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-[0.68rem] font-semibold tracking-[0.15em] text-black/60 uppercase">Email</label>
+              <input type="email" id="email" name="email" required className="w-full rounded-xl border border-black/20 bg-transparent px-4 py-2 text-sm text-black placeholder:text-black/40 focus:border-black focus:outline-none focus:ring-1 focus:ring-black" placeholder="john@example.com" />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="message" className="text-[0.68rem] font-semibold tracking-[0.15em] text-black/60 uppercase">Message</label>
+              <textarea id="message" name="message" required rows={4} className="w-full resize-none rounded-xl border border-black/20 bg-transparent px-4 py-2 text-sm text-black placeholder:text-black/40 focus:border-black focus:outline-none focus:ring-1 focus:ring-black" placeholder="Your message here..."></textarea>
+            </div>
+            <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-black bg-black px-6 py-2.5 text-[0.68rem] font-semibold tracking-[0.18em] text-[#f4efe7] transition-colors hover:bg-[#f4efe7] hover:text-black">
+              SEND MESSAGE
+            </button>
+          </form>
+        </section>
+
+        <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[1.35rem] border border-black/12 bg-white/35 px-4 py-3 text-[0.58rem] tracking-[0.28em] text-black/65 uppercase shadow-[0_10px_24px_rgba(17,17,17,0.04)] sm:mt-5 sm:px-5 sm:py-4">
+          <p>SHAD C T</p>
+          <div className="flex items-center gap-3">
+            <p>FULL STACK DEVELOPER</p>
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="print:hidden inline-flex items-center gap-2 rounded-full border border-black/70 bg-black px-3 py-1.5 text-[0.6rem] font-semibold tracking-[0.18em] text-[#f4efe7] transition-colors hover:bg-[#f4efe7] hover:text-black"
+            >
+              <Download className="h-3.5 w-3.5" />
+              DOWNLOAD PDF
+            </button>
+          </div>
+        </footer>
+      </div>
     </main>
   )
 }

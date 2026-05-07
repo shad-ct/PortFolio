@@ -1,6 +1,6 @@
 import { ArrowRight } from 'lucide-react'
 
-import type { BlogEntry } from './lib/siteData'
+import type { BlogEntry } from './lib/types'
 
 type BlogPageProps = {
   blogs: BlogEntry[]
@@ -33,9 +33,6 @@ export default function BlogPage({ blogs, slug }: BlogPageProps) {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-8 py-6">
           <a href="/" className="text-sm underline hover:opacity-70">
             ← BACK
-          </a>
-          <a href="/admin" className="text-xs tracking-[0.22em] uppercase text-gray-700 hover:text-black">
-            ADMIN
           </a>
         </div>
       </nav>
@@ -83,7 +80,7 @@ export default function BlogPage({ blogs, slug }: BlogPageProps) {
 
       <footer className="border-t border-black">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-8 py-12 text-xs tracking-widest">
-          <p>© {new Date().getFullYear()} ALEX RIVERA</p>
+          <p>© {new Date().getFullYear()} SHAD C T</p>
           <a href="/" className="hover:opacity-70">
             HOME
           </a>
