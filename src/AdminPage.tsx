@@ -63,6 +63,18 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
       console.error('Error deleting visitor:', err)
     }
   }
+  async function deleteAllVisitors() {
+    if (!confirm('ARE YOU SURE? This will permanently delete ALL visitor logs.')) return
+    try {
+      const res = await fetch(`${API_BASE}/visitors`, { method: 'DELETE' })
+      if (res.ok) {
+        setVisitors([])
+      }
+    } catch (err) {
+      console.error('Error deleting all visitors:', err)
+    }
+  }
+
   const [projectDraft, setProjectDraft] = useState<ProjectDraft>({
     title: '',
     description: '',
@@ -949,7 +961,10 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
               <h2 className="text-4xl font-black tracking-tighter uppercase">Visitor Logs</h2>
               <p className="text-gray-500 mt-2">Real-time tracking of site interactions.</p>
             </div>
-            <button onClick={fetchVisitors} className="border border-black px-6 py-2 text-xs font-bold uppercase hover:bg-black hover:text-white transition-colors">Refresh</button>
+            <div className="flex gap-3">
+              <button onClick={fetchVisitors} className="border border-black px-6 py-2 text-xs font-bold uppercase hover:bg-black hover:text-white transition-colors">Refresh</button>
+              <button onClick={deleteAllVisitors} className="border border-red-600 bg-red-600 text-white px-6 py-2 text-xs font-bold uppercase hover:bg-white hover:text-red-600 transition-colors">Delete All Logs</button>
+            </div>
           </div>
 
           {isLoadingVisitors ? (

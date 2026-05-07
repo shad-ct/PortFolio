@@ -317,6 +317,15 @@ app.post('/api/visitors', async (req, res) => {
   }
 });
 
+app.delete('/api/visitors', async (req, res) => {
+  try {
+    await Visitor.deleteMany({});
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/visitors/:id', async (req, res) => {
   try {
     await Visitor.findByIdAndDelete(req.params.id);
