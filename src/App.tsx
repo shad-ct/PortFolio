@@ -242,38 +242,30 @@ function App() {
 
   const pathname = typeof window === "undefined" ? "/" : window.location.pathname.replace(/\/$/, "") || "/";
 
-  if (pathname.startsWith("/blog/")) {
-    const slug = decodeURIComponent(pathname.split("/").filter(Boolean)[1] ?? "");
-    return <BlogPage blogs={siteContent.blogs} slug={slug} />;
-  }
-
-  if (pathname === "/projects") {
-    // We need to import ProjectsPage (we will do this at the top)
-    return <ProjectsPage projects={siteContent.projects} />;
-  }
-
-  if (pathname === "/admin") {
-    return (
-      <AdminPage
-        content={siteContent}
-        onAddProject={handleAddProject}
-        onAddBlog={handleAddBlog}
-        onAddPeep={handleAddPeep}
-        onUpdateProject={handleUpdateProject}
-        onDeleteProject={handleDeleteProject}
-        onUpdateBlog={handleUpdateBlog}
-        onDeleteBlog={handleDeleteBlog}
-        onDeleteContact={handleDeleteContact}
-        onUpdatePeep={handleUpdatePeep}
-        onDeletePeep={handleDeletePeep}
-      />
-    );
-  }
-
   return (
     <>
       <VisitorTracker />
-      <HomePage projects={siteContent.projects} blogs={siteContent.blogs} onContactSubmit={handleContactSubmit} />
+      {pathname.startsWith("/blog/") ? (
+        <BlogPage blogs={siteContent.blogs} slug={decodeURIComponent(pathname.split("/").filter(Boolean)[1] ?? "")} />
+      ) : pathname === "/projects" ? (
+        <ProjectsPage projects={siteContent.projects} />
+      ) : pathname === "/admin" ? (
+        <AdminPage
+          content={siteContent}
+          onAddProject={handleAddProject}
+          onAddBlog={handleAddBlog}
+          onAddPeep={handleAddPeep}
+          onUpdateProject={handleUpdateProject}
+          onDeleteProject={handleDeleteProject}
+          onUpdateBlog={handleUpdateBlog}
+          onDeleteBlog={handleDeleteBlog}
+          onDeleteContact={handleDeleteContact}
+          onUpdatePeep={handleUpdatePeep}
+          onDeletePeep={handleDeletePeep}
+        />
+      ) : (
+        <HomePage projects={siteContent.projects} blogs={siteContent.blogs} onContactSubmit={handleContactSubmit} />
+      )}
     </>
   );
 }
