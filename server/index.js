@@ -262,29 +262,29 @@ app.get('/api/visitors', async (req, res) => {
 
 app.post('/api/visitors', async (req, res) => {
   try {
-    const { path, screenWidth, screenHeight, language, id } = req.body;
+    const { path, screenWidth, screenHeight, language } = req.body;
     
-    if (id) {
-      // Update existing session with duration
-      const visitor = await Visitor.findById(id);
-      if (visitor) {
-        visitor.endTime = new Date();
-        visitor.duration = Math.floor((visitor.endTime - visitor.startTime) / 1000);
-        await visitor.save();
-        return res.json({ ...visitor.toObject(), id: visitor._id.toString() });
-      }
-    }
-
-    // New session
     let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     if (ip && ip.includes(',')) ip = ip.split(',')[0].trim();
-    
+    if (!ip) ip = 'Unknown';
+
+    // Rate Limit: Only log once per IP/Path per hour to prevent flooding
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const existingLog = await Visitor.findOne({
+      ip,
+      path,
+      startTime: { $gt: oneHourAgo }
+    });
+
+    if (existingLog) {
+      return res.json({ message: 'Log throttled', id: existingLog._id });
+    }
+
     const userAgent = req.headers['user-agent'];
-    
     let location = { city: 'Unknown', country: 'Unknown', region: 'Unknown' };
     
-    // Attempt simple geolocation (skip for localhost)
-    if (ip && ip !== '127.0.0.1' && ip !== '::1' && !ip.startsWith('192.168.') && !ip.startsWith('10.')) {
+    // Simple geolocation
+    if (ip !== '127.0.0.1' && ip !== '::1' && !ip.startsWith('192.168.') && !ip.startsWith('10.')) {
       try {
         const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
         const geoData = await geoRes.json();
@@ -301,7 +301,7 @@ app.post('/api/visitors', async (req, res) => {
     }
 
     const newVisitor = new Visitor({
-      ip: ip || 'Unknown',
+      ip,
       userAgent,
       location,
       path,

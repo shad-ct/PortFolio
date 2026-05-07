@@ -9,13 +9,11 @@ import type { SiteContent } from "./lib/types";
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
 function VisitorTracker() {
-  const [visitorId, setVisitorId] = useState<string | null>(null);
-
   useEffect(() => {
-    // Log visit immediately
+    // Log visit once on mount
     const logVisit = async () => {
       try {
-        const res = await fetch(`${API_BASE}/visitors`, {
+        await fetch(`${API_BASE}/visitors`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -25,27 +23,13 @@ function VisitorTracker() {
             language: navigator.language
           })
         });
-        if (res.ok) {
-          const data = await res.json();
-          setVisitorId(data.id);
-        }
       } catch (err) {
         console.error('Tracking error:', err);
       }
     };
 
     logVisit();
-
-    // Update duration on exit
-    const updateDuration = () => {
-      if (visitorId) {
-        navigator.sendBeacon(`${API_BASE}/visitors`, JSON.stringify({ id: visitorId }));
-      }
-    };
-
-    window.addEventListener('beforeunload', updateDuration);
-    return () => window.removeEventListener('beforeunload', updateDuration);
-  }, [visitorId]);
+  }, []); // Only run once on mount
 
   return null;
 }
