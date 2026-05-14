@@ -8,7 +8,7 @@ import type { SiteContent } from "./lib/types";
 
 import LoadingSequence from "./LoadingSequence";
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? 'https://portfolio-arq2.onrender.com/api' : 'http://localhost:5000/api');
 
 function VisitorTracker() {
   useEffect(() => {
