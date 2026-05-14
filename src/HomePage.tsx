@@ -68,20 +68,53 @@ function TimelineItem({
   subtitle,
   period,
   isLast = false,
+  isExperience = false,
+  logo,
+  link,
 }: {
   title: string
   subtitle: string
   period: string
   isLast?: boolean
+  isExperience?: boolean
+  logo?: string
+  link?: string
 }) {
+  const Dot = () => {
+    if (isExperience && logo) {
+      return (
+        <img
+          src={logo}
+          alt={`${title} logo`}
+          className="relative z-10 h-6 w-6 shrink-0 rounded-full border border-black/15 bg-white object-contain shadow-sm"
+        />
+      )
+    }
+    return (
+      <span
+        className={`relative z-10 mt-1 h-3 w-3 shrink-0 rounded-full border-2 border-black shadow-[0_0_0_3px_rgba(0,0,0,0.08)] ${isExperience ? 'bg-black' : 'bg-[#f4efe7]'
+          }`}
+      />
+    )
+  }
+
+  const TitleWrapper = ({ children }: { children: React.ReactNode }) => {
+    if (isExperience && link) {
+      return (
+        <a href={link} target="_blank" rel="noreferrer" className="hover:underline">
+          {children}
+        </a>
+      )
+    }
+    return <>{children}</>
+  }
+
   return (
     <article className="relative flex gap-4">
       {/* Connector column */}
       <div className="relative flex flex-col items-center" style={{ minWidth: '1.5rem' }}>
         {/* Dot */}
-        <span
-          className="relative z-10 mt-1 h-3 w-3 shrink-0 rounded-full border-2 border-black bg-[#f4efe7] shadow-[0_0_0_3px_rgba(0,0,0,0.08)]"
-        />
+        <Dot />
         {/* Vertical line below dot */}
         {!isLast && (
           <span className="mt-1 flex-1 w-px bg-gradient-to-b from-black/30 to-black/05" />
@@ -91,7 +124,9 @@ function TimelineItem({
       {/* Content */}
       <div className="pb-6">
         <p className="text-[0.78rem] font-semibold tracking-[0.15em] text-black/40 uppercase mb-0.5">{period}</p>
-        <p className="text-[0.88rem] font-black tracking-[0.08em] text-black uppercase leading-tight">{title}</p>
+        <p className="text-[0.88rem] font-black tracking-[0.08em] text-black uppercase leading-tight">
+          <TitleWrapper>{title}</TitleWrapper>
+        </p>
         <p className="mt-1 text-[0.82rem] text-black/65 leading-snug">{subtitle}</p>
       </div>
     </article>
@@ -183,9 +218,8 @@ function Lightbox({
               key={i}
               onClick={() => setCurrent(i)}
               aria-label={`Go to image ${i + 1}`}
-              className={`h-1.5 rounded-full transition-all duration-200 ${
-                i === current ? 'w-6 bg-white' : 'w-1.5 bg-white/35 hover:bg-white/60'
-              }`}
+              className={`h-1.5 rounded-full transition-all duration-200 ${i === current ? 'w-6 bg-white' : 'w-1.5 bg-white/35 hover:bg-white/60'
+                }`}
             />
           ))}
         </div>
@@ -412,6 +446,9 @@ export default function HomePage({ projects, blogs, onContactSubmit }: HomePageP
                     subtitle={item.role}
                     period={item.period}
                     isLast={i === resumeProfile.experience.length - 1}
+                    isExperience={true}
+                    link={item.link}
+                    logo={item.logo}
                   />
                 ))}
               </div>
@@ -500,28 +537,28 @@ export default function HomePage({ projects, blogs, onContactSubmit }: HomePageP
         <section className="print:hidden mt-2 space-y-4 rounded-[1.5rem] border border-black/15 bg-white/35 p-5 shadow-[0_12px_30px_rgba(17,17,17,0.05)] sm:p-6">
           <SectionHeading title="Get in Touch" />
           <form className="space-y-4" onSubmit={(e) => {
-              e.preventDefault();
-              const form = e.currentTarget;
-              const formData = new FormData(form);
-              const data = {
-                  name: formData.get('name') as string,
-                  email: formData.get('email') as string,
-                  subject: 'Contact Form Submission', // Default subject
-                  message: formData.get('message') as string
-              };
-              // Note: Make sure HomePageProps includes onContactSubmit
-              if(typeof onContactSubmit === 'function'){
-                  onContactSubmit(data).then(() => {
-                      alert('Message sent successfully!');
-                      form.reset();
-                  }).catch(() => {
-                      alert('Failed to send message.');
-                  });
-              } else {
-                 console.log("Form data (no API bound):", data);
-                 form.reset();
-                 alert('Message sent locally!');
-              }
+            e.preventDefault();
+            const form = e.currentTarget;
+            const formData = new FormData(form);
+            const data = {
+              name: formData.get('name') as string,
+              email: formData.get('email') as string,
+              subject: 'Contact Form Submission', // Default subject
+              message: formData.get('message') as string
+            };
+            // Note: Make sure HomePageProps includes onContactSubmit
+            if (typeof onContactSubmit === 'function') {
+              onContactSubmit(data).then(() => {
+                alert('Message sent successfully!');
+                form.reset();
+              }).catch(() => {
+                alert('Failed to send message.');
+              });
+            } else {
+              console.log("Form data (no API bound):", data);
+              form.reset();
+              alert('Message sent locally!');
+            }
           }}>
             <div className="space-y-2">
               <label htmlFor="name" className="text-[0.68rem] font-semibold tracking-[0.15em] text-black/60 uppercase">Name</label>

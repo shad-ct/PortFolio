@@ -28,6 +28,8 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
   const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'blogs' | 'contacts' | 'peeps' | 'visitors'>('dashboard')
   const [visitors, setVisitors] = useState<any[]>([])
   const [isLoadingVisitors, setIsLoadingVisitors] = useState(false)
+  const [loginAttempts, setLoginAttempts] = useState(0)
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null)
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api'
 
@@ -111,14 +113,34 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
   function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      const remainingTotalSeconds = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      const remainingMins = Math.floor(remainingTotalSeconds / 60);
+      const remainingSecs = remainingTotalSeconds % 60;
+      setNotice(`Too many failed attempts. Try again in ${remainingMins}m ${remainingSecs}s.`)
+      return
+    } else if (lockoutUntil && Date.now() >= lockoutUntil) {
+      setLockoutUntil(null)
+      setLoginAttempts(0)
+    }
+
     if (username.trim() === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
       setAdminAuthenticated(true)
       setAuthenticated(true)
       setNotice('Logged in successfully.')
+      setLoginAttempts(0)
       return
     }
 
-    setNotice('Invalid admin credentials.')
+    const newAttempts = loginAttempts + 1
+    setLoginAttempts(newAttempts)
+
+    if (newAttempts >= 3) {
+      setLockoutUntil(Date.now() + 3 * 60 * 1000) // 3 mins block
+      setNotice('Too many failed attempts. Try again in 3 minutes.')
+    } else {
+      setNotice(`Invalid admin credentials. ${3 - newAttempts} attempt(s) remaining.`)
+    }
   }
 
   function handleLogout() {
@@ -171,7 +193,7 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
     if (!dob) return '';
     const parts = dob.split('/');
     if (parts.length !== 3) return '';
-    return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
   }
   // YYYY-MM-DD → DD/MM/YYYY for storage
   function fromDateInput(val: string): string {
@@ -188,19 +210,19 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10) - 1;
     if (isNaN(day) || isNaN(month)) return false;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const currentYear = today.getFullYear();
     let bday = new Date(currentYear, month, day);
-    
+
     if (bday < today) {
       bday = new Date(currentYear + 1, month, day);
     }
-    
+
     const diffTime = bday.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     return diffDays >= 0 && diffDays <= 7;
   }).map(peep => {
     const parts = peep.dob!.split('/');
@@ -254,6 +276,7 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
               <input
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
+                disabled={!!lockoutUntil && Date.now() < lockoutUntil}
                 className={inputClassName}
                 placeholder="admin"
               />
@@ -264,13 +287,18 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                disabled={!!lockoutUntil && Date.now() < lockoutUntil}
                 className={inputClassName}
                 placeholder="portfolio-admin"
               />
             </label>
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-white hover:text-black"
+              disabled={!!lockoutUntil && Date.now() < lockoutUntil}
+              className={`inline-flex w-full items-center justify-center gap-2 border border-black px-4 py-3 text-sm font-medium transition-colors ${(!!lockoutUntil && Date.now() < lockoutUntil)
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
+                  : 'bg-black text-white hover:bg-white hover:text-black'
+                }`}
             >
               SIGN IN
             </button>
@@ -435,37 +463,37 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                   />
                 </label>
                 <label className="grid gap-2 text-sm font-medium text-gray-800">
-                   Or Upload Image (ImgBB)
-                   <input 
-                     type="file" 
-                     accept="image/*"
-                     onChange={async (e) => {
-                         if(e.target.files && e.target.files[0]) {
-                             const file = e.target.files[0];
-                             const formData = new FormData();
-                             formData.append('image', file);
-                             try {
-                                 setNotice('Uploading image...');
-                                 const res = await fetch('http://localhost:5000/api/upload', {
-                                     method: 'POST',
-                                     body: formData
-                                 });
-                                 const data = await res.json();
-                                 if(data.url) {
-                                     setProjectDraft(prev => ({ 
-                                         ...prev, 
-                                         images: prev.images ? prev.images + '\n' + data.url : data.url 
-                                     }));
-                                     setNotice('Image uploaded successfully.');
-                                 } else {
-                                     setNotice('Upload failed.');
-                                 }
-                             } catch(err) {
-                                 setNotice('Upload error.');
-                             }
-                         }
-                     }}
-                   />
+                  Or Upload Image (ImgBB)
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        try {
+                          setNotice('Uploading image...');
+                          const res = await fetch('http://localhost:5000/api/upload', {
+                            method: 'POST',
+                            body: formData
+                          });
+                          const data = await res.json();
+                          if (data.url) {
+                            setProjectDraft(prev => ({
+                              ...prev,
+                              images: prev.images ? prev.images + '\n' + data.url : data.url
+                            }));
+                            setNotice('Image uploaded successfully.');
+                          } else {
+                            setNotice('Upload failed.');
+                          }
+                        } catch (err) {
+                          setNotice('Upload error.');
+                        }
+                      }
+                    }}
+                  />
                 </label>
                 <label className="grid gap-2 text-sm font-medium text-gray-800">
                   Bullet points
@@ -504,25 +532,25 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                   {editingProjectId === project.id ? (
                     <div className="grid gap-3 p-5">
                       <p className="text-xs tracking-[0.2em] text-gray-500 uppercase font-semibold">Editing: {project.title}</p>
-                      <input className={inputClassName} value={editingProjectData.title || ''} onChange={e => setEditingProjectData({...editingProjectData, title: e.target.value})} placeholder="Title" />
-                      <textarea className={inputClassName} rows={2} value={editingProjectData.description || ''} onChange={e => setEditingProjectData({...editingProjectData, description: e.target.value})} placeholder="Description" />
-                      <textarea className={inputClassName} rows={3} value={editingProjectData.bulletPoints ? (Array.isArray(editingProjectData.bulletPoints) ? editingProjectData.bulletPoints.join('\n') : editingProjectData.bulletPoints) : ''} onChange={e => setEditingProjectData({...editingProjectData, bulletPoints: e.target.value})} placeholder="Bullet points (one per line)" />
-                      <input className={inputClassName} value={editingProjectData.link || ''} onChange={e => setEditingProjectData({...editingProjectData, link: e.target.value})} placeholder="Link" />
-                      <input className={inputClassName} value={editingProjectData.githubLink || ''} onChange={e => setEditingProjectData({...editingProjectData, githubLink: e.target.value})} placeholder="GitHub link" />
-                      <input className={inputClassName} value={editingProjectData.liveLink || ''} onChange={e => setEditingProjectData({...editingProjectData, liveLink: e.target.value})} placeholder="Live link" />
-                      <input className={inputClassName} value={Array.isArray(editingProjectData.tags) ? editingProjectData.tags.join(', ') : editingProjectData.tags || ''} onChange={e => setEditingProjectData({...editingProjectData, tags: e.target.value})} placeholder="Tags (comma separated)" />
+                      <input className={inputClassName} value={editingProjectData.title || ''} onChange={e => setEditingProjectData({ ...editingProjectData, title: e.target.value })} placeholder="Title" />
+                      <textarea className={inputClassName} rows={2} value={editingProjectData.description || ''} onChange={e => setEditingProjectData({ ...editingProjectData, description: e.target.value })} placeholder="Description" />
+                      <textarea className={inputClassName} rows={3} value={editingProjectData.bulletPoints ? (Array.isArray(editingProjectData.bulletPoints) ? editingProjectData.bulletPoints.join('\n') : editingProjectData.bulletPoints) : ''} onChange={e => setEditingProjectData({ ...editingProjectData, bulletPoints: e.target.value })} placeholder="Bullet points (one per line)" />
+                      <input className={inputClassName} value={editingProjectData.link || ''} onChange={e => setEditingProjectData({ ...editingProjectData, link: e.target.value })} placeholder="Link" />
+                      <input className={inputClassName} value={editingProjectData.githubLink || ''} onChange={e => setEditingProjectData({ ...editingProjectData, githubLink: e.target.value })} placeholder="GitHub link" />
+                      <input className={inputClassName} value={editingProjectData.liveLink || ''} onChange={e => setEditingProjectData({ ...editingProjectData, liveLink: e.target.value })} placeholder="Live link" />
+                      <input className={inputClassName} value={Array.isArray(editingProjectData.tags) ? editingProjectData.tags.join(', ') : editingProjectData.tags || ''} onChange={e => setEditingProjectData({ ...editingProjectData, tags: e.target.value })} placeholder="Tags (comma separated)" />
                       <label className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-                        <input type="checkbox" checked={editingProjectData.isFeatured || false} onChange={e => setEditingProjectData({...editingProjectData, isFeatured: e.target.checked})} className="h-3 w-3 rounded border-gray-300" />
+                        <input type="checkbox" checked={editingProjectData.isFeatured || false} onChange={e => setEditingProjectData({ ...editingProjectData, isFeatured: e.target.checked })} className="h-3 w-3 rounded border-gray-300" />
                         Featured Project (Show on Homepage)
                       </label>
                       <label className="text-xs text-gray-600 font-medium">
                         Image URLs (one per line)
-                        <textarea className={inputClassName} rows={3} value={Array.isArray(editingProjectData.images) ? editingProjectData.images.join('\n') : editingProjectData.images || ''} onChange={e => setEditingProjectData({...editingProjectData, images: e.target.value})} placeholder="https://..." />
+                        <textarea className={inputClassName} rows={3} value={Array.isArray(editingProjectData.images) ? editingProjectData.images.join('\n') : editingProjectData.images || ''} onChange={e => setEditingProjectData({ ...editingProjectData, images: e.target.value })} placeholder="https://..." />
                       </label>
                       {/* Image preview in edit mode */}
-                      {(Array.isArray(editingProjectData.images) ? editingProjectData.images : (editingProjectData.images || '').split('\n').map((s:string) => s.trim()).filter(Boolean)).length > 0 && (
+                      {(Array.isArray(editingProjectData.images) ? editingProjectData.images : (editingProjectData.images || '').split('\n').map((s: string) => s.trim()).filter(Boolean)).length > 0 && (
                         <div className="flex gap-2 flex-wrap">
-                          {(Array.isArray(editingProjectData.images) ? editingProjectData.images : (editingProjectData.images || '').split('\n').map((s:string) => s.trim()).filter(Boolean)).map((src:string, i:number) => (
+                          {(Array.isArray(editingProjectData.images) ? editingProjectData.images : (editingProjectData.images || '').split('\n').map((s: string) => s.trim()).filter(Boolean)).map((src: string, i: number) => (
                             <img key={i} src={src} alt="preview" className="h-16 w-24 object-cover rounded-lg border border-gray-200" />
                           ))}
                         </div>
@@ -534,16 +562,16 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                             const fd = new FormData(); fd.append('image', e.target.files[0]);
                             const res = await fetch('http://localhost:5000/api/upload', { method: 'POST', body: fd });
                             const d = await res.json();
-                            if (d.url) { const cur = Array.isArray(editingProjectData.images) ? editingProjectData.images.join('\n') : (editingProjectData.images || ''); setEditingProjectData((p:any) => ({...p, images: cur ? cur + '\n' + d.url : d.url})); setNotice('Image uploaded.'); }
+                            if (d.url) { const cur = Array.isArray(editingProjectData.images) ? editingProjectData.images.join('\n') : (editingProjectData.images || ''); setEditingProjectData((p: any) => ({ ...p, images: cur ? cur + '\n' + d.url : d.url })); setNotice('Image uploaded.'); }
                           }
                         }} />
                       </label>
                       <div className="flex gap-2 mt-1">
                         <button className="border border-black bg-black text-white px-4 py-2 text-xs" onClick={() => {
                           const d = editingProjectData;
-                          const imgs = Array.isArray(d.images) ? d.images : (d.images || '').split('\n').map((s:string)=>s.trim()).filter(Boolean);
-                          const tags = typeof d.tags === 'string' ? d.tags.split(',').map((t:string)=>t.trim()).filter(Boolean) : d.tags;
-                          const bps = typeof d.bulletPoints === 'string' ? d.bulletPoints.split('\n').map((b:string)=>b.trim()).filter(Boolean) : d.bulletPoints;
+                          const imgs = Array.isArray(d.images) ? d.images : (d.images || '').split('\n').map((s: string) => s.trim()).filter(Boolean);
+                          const tags = typeof d.tags === 'string' ? d.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : d.tags;
+                          const bps = typeof d.bulletPoints === 'string' ? d.bulletPoints.split('\n').map((b: string) => b.trim()).filter(Boolean) : d.bulletPoints;
                           onUpdateProject && onUpdateProject(project.id, { ...d, images: imgs, tags, bulletPoints: bps, isFeatured: d.isFeatured || false }); setEditingProjectId(null); setNotice('Project updated.');
                         }}>SAVE</button>
                         <button className="border border-gray-400 px-4 py-2 text-xs" onClick={() => setEditingProjectId(null)}>CANCEL</button>
@@ -553,9 +581,9 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                     <>
                       {/* Image gallery strip */}
                       {project.images && project.images.length > 0 && (
-                        <div className="flex gap-1 overflow-x-auto p-2 bg-gray-50" style={{scrollbarWidth:'none'}}>
+                        <div className="flex gap-1 overflow-x-auto p-2 bg-gray-50" style={{ scrollbarWidth: 'none' }}>
                           {project.images.map((src, i) => (
-                            <img key={i} src={src} alt={`${project.title} ${i+1}`} className="h-28 w-40 shrink-0 object-cover rounded-xl border border-gray-200" />
+                            <img key={i} src={src} alt={`${project.title} ${i + 1}`} className="h-28 w-40 shrink-0 object-cover rounded-xl border border-gray-200" />
                           ))}
                         </div>
                       )}
@@ -566,8 +594,8 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                             {project.isFeatured && <span className="ml-2 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">Featured</span>}
                           </h3>
                           <div className="flex gap-2 shrink-0">
-                            <button className="text-xs border border-gray-300 px-3 py-1 hover:border-black transition-colors" onClick={() => { setEditingProjectId(project.id); setEditingProjectData({...project, tags: Array.isArray(project.tags) ? project.tags.join(', ') : project.tags, images: Array.isArray(project.images) ? project.images.join('\n') : project.images || ''}); }}>Edit</button>
-                            <button className="text-xs border border-red-300 px-3 py-1 text-red-600 hover:bg-red-50 transition-colors" onClick={() => { if(confirm('Delete this project?')) { onDeleteProject && onDeleteProject(project.id); setNotice('Project deleted.'); } }}>Delete</button>
+                            <button className="text-xs border border-gray-300 px-3 py-1 hover:border-black transition-colors" onClick={() => { setEditingProjectId(project.id); setEditingProjectData({ ...project, tags: Array.isArray(project.tags) ? project.tags.join(', ') : project.tags, images: Array.isArray(project.images) ? project.images.join('\n') : project.images || '' }); }}>Edit</button>
+                            <button className="text-xs border border-red-300 px-3 py-1 text-red-600 hover:bg-red-50 transition-colors" onClick={() => { if (confirm('Delete this project?')) { onDeleteProject && onDeleteProject(project.id); setNotice('Project deleted.'); } }}>Delete</button>
                           </div>
                         </div>
                         <p className="mt-2 text-sm text-gray-600 leading-relaxed">{project.description}</p>
@@ -652,38 +680,38 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                     placeholder="https://..."
                   />
                 </label>
-                 <label className="grid gap-2 text-sm font-medium text-gray-800">
-                   Or Upload Image (ImgBB)
-                   <input 
-                     type="file" 
-                     accept="image/*"
-                     onChange={async (e) => {
-                         if(e.target.files && e.target.files[0]) {
-                             const file = e.target.files[0];
-                             const formData = new FormData();
-                             formData.append('image', file);
-                             try {
-                                 setNotice('Uploading image...');
-                                 const res = await fetch('http://localhost:5000/api/upload', {
-                                     method: 'POST',
-                                     body: formData
-                                 });
-                                 const data = await res.json();
-                                 if(data.url) {
-                                     setBlogDraft(prev => ({ 
-                                         ...prev, 
-                                         image: data.url 
-                                     }));
-                                     setNotice('Image uploaded successfully.');
-                                 } else {
-                                     setNotice('Upload failed.');
-                                 }
-                             } catch(err) {
-                                 setNotice('Upload error.');
-                             }
-                         }
-                     }}
-                   />
+                <label className="grid gap-2 text-sm font-medium text-gray-800">
+                  Or Upload Image (ImgBB)
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        try {
+                          setNotice('Uploading image...');
+                          const res = await fetch('http://localhost:5000/api/upload', {
+                            method: 'POST',
+                            body: formData
+                          });
+                          const data = await res.json();
+                          if (data.url) {
+                            setBlogDraft(prev => ({
+                              ...prev,
+                              image: data.url
+                            }));
+                            setNotice('Image uploaded successfully.');
+                          } else {
+                            setNotice('Upload failed.');
+                          }
+                        } catch (err) {
+                          setNotice('Upload error.');
+                        }
+                      }
+                    }}
+                  />
                 </label>
                 <button
                   type="submit"
@@ -703,13 +731,13 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                   {editingBlogId === blog.id ? (
                     <div className="grid gap-3 p-5">
                       <p className="text-xs tracking-[0.2em] text-gray-500 uppercase font-semibold">Editing: {blog.title}</p>
-                      <input className={inputClassName} value={editingBlogData.title || ''} onChange={e => setEditingBlogData({...editingBlogData, title: e.target.value})} placeholder="Title" />
-                      <textarea className={inputClassName} rows={2} value={editingBlogData.excerpt || ''} onChange={e => setEditingBlogData({...editingBlogData, excerpt: e.target.value})} placeholder="Excerpt" />
-                      <textarea className={inputClassName} rows={8} value={editingBlogData.content || ''} onChange={e => setEditingBlogData({...editingBlogData, content: e.target.value})} placeholder="Content" />
-                      <input className={inputClassName} value={Array.isArray(editingBlogData.tags) ? editingBlogData.tags.join(', ') : editingBlogData.tags || ''} onChange={e => setEditingBlogData({...editingBlogData, tags: e.target.value})} placeholder="Tags" />
+                      <input className={inputClassName} value={editingBlogData.title || ''} onChange={e => setEditingBlogData({ ...editingBlogData, title: e.target.value })} placeholder="Title" />
+                      <textarea className={inputClassName} rows={2} value={editingBlogData.excerpt || ''} onChange={e => setEditingBlogData({ ...editingBlogData, excerpt: e.target.value })} placeholder="Excerpt" />
+                      <textarea className={inputClassName} rows={8} value={editingBlogData.content || ''} onChange={e => setEditingBlogData({ ...editingBlogData, content: e.target.value })} placeholder="Content" />
+                      <input className={inputClassName} value={Array.isArray(editingBlogData.tags) ? editingBlogData.tags.join(', ') : editingBlogData.tags || ''} onChange={e => setEditingBlogData({ ...editingBlogData, tags: e.target.value })} placeholder="Tags" />
                       <label className="text-xs text-gray-600 font-medium">
                         Cover Image URL
-                        <input className={inputClassName} value={editingBlogData.image || ''} onChange={e => setEditingBlogData({...editingBlogData, image: e.target.value})} placeholder="https://..." />
+                        <input className={inputClassName} value={editingBlogData.image || ''} onChange={e => setEditingBlogData({ ...editingBlogData, image: e.target.value })} placeholder="https://..." />
                       </label>
                       {editingBlogData.image && <img src={editingBlogData.image} alt="preview" className="h-32 w-full object-cover rounded-xl border border-gray-200" />}
                       <label className="text-xs text-gray-600 font-medium">
@@ -719,14 +747,14 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                             const fd = new FormData(); fd.append('image', e.target.files[0]);
                             const res = await fetch('http://localhost:5000/api/upload', { method: 'POST', body: fd });
                             const d = await res.json();
-                            if (d.url) { setEditingBlogData((p:any) => ({...p, image: d.url})); setNotice('Image uploaded.'); }
+                            if (d.url) { setEditingBlogData((p: any) => ({ ...p, image: d.url })); setNotice('Image uploaded.'); }
                           }
                         }} />
                       </label>
                       <div className="flex gap-2 mt-1">
                         <button className="border border-black bg-black text-white px-4 py-2 text-xs" onClick={() => {
                           const d = editingBlogData;
-                          const tags = typeof d.tags === 'string' ? d.tags.split(',').map((t:string)=>t.trim()).filter(Boolean) : d.tags;
+                          const tags = typeof d.tags === 'string' ? d.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : d.tags;
                           onUpdateBlog && onUpdateBlog(blog.id, { ...d, tags }); setEditingBlogId(null); setNotice('Blog updated.');
                         }}>SAVE</button>
                         <button className="border border-gray-400 px-4 py-2 text-xs" onClick={() => setEditingBlogId(null)}>CANCEL</button>
@@ -747,8 +775,8 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                           <div className="flex gap-2 shrink-0 flex-col items-end">
                             <div className="flex gap-2">
                               <a href={`/blog/${blog.slug}`} target="_blank" rel="noreferrer" className="text-xs border border-gray-300 px-2 py-1 hover:border-black transition-colors">View →</a>
-                              <button className="text-xs border border-gray-300 px-2 py-1 hover:border-black transition-colors" onClick={() => { setEditingBlogId(blog.id); setEditingBlogData({...blog, tags: Array.isArray(blog.tags) ? blog.tags.join(', ') : blog.tags}); setExpandedBlogId(null); }}>Edit</button>
-                              <button className="text-xs border border-red-300 px-2 py-1 text-red-600 hover:bg-red-50 transition-colors" onClick={() => { if(confirm('Delete this blog?')) { onDeleteBlog && onDeleteBlog(blog.id); setNotice('Blog deleted.'); } }}>Delete</button>
+                              <button className="text-xs border border-gray-300 px-2 py-1 hover:border-black transition-colors" onClick={() => { setEditingBlogId(blog.id); setEditingBlogData({ ...blog, tags: Array.isArray(blog.tags) ? blog.tags.join(', ') : blog.tags }); setExpandedBlogId(null); }}>Edit</button>
+                              <button className="text-xs border border-red-300 px-2 py-1 text-red-600 hover:bg-red-50 transition-colors" onClick={() => { if (confirm('Delete this blog?')) { onDeleteBlog && onDeleteBlog(blog.id); setNotice('Blog deleted.'); } }}>Delete</button>
                             </div>
                           </div>
                         </div>
@@ -789,7 +817,7 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                     </div>
                     <div className="flex items-center gap-3">
                       <p className="text-xs tracking-widest text-gray-500 uppercase">{contact.submittedAt}</p>
-                      <button className="text-xs border border-red-300 px-3 py-1 text-red-600 hover:bg-red-50 transition-colors" onClick={() => { if(confirm('Delete this message?')) { onDeleteContact && onDeleteContact(contact.id); setNotice('Contact deleted.'); } }}>Delete</button>
+                      <button className="text-xs border border-red-300 px-3 py-1 text-red-600 hover:bg-red-50 transition-colors" onClick={() => { if (confirm('Delete this message?')) { onDeleteContact && onDeleteContact(contact.id); setNotice('Contact deleted.'); } }}>Delete</button>
                     </div>
                   </div>
                   <p className="mt-4 text-sm font-medium text-gray-800">{contact.subject}</p>
@@ -861,15 +889,15 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
               </div>
               <div className="grid gap-4">
                 {next7Birthdays.length === 0 ? (
-                   <p className="text-sm text-gray-700">No peeps found.</p>
+                  <p className="text-sm text-gray-700">No peeps found.</p>
                 ) : (
                   next7Birthdays.map(peep => (
                     <div key={peep.id} className="rounded-2xl border border-black p-5 flex flex-col gap-2 bg-[#f4efe7]">
                       <div className="flex justify-between items-center">
-                         <h3 className="text-xl font-bold">{peep.name}</h3>
-                         <p className="text-sm font-medium text-black">
-                           {peep.diffDays === 0 ? "Today!" : `In ${peep.diffDays} day${peep.diffDays === 1 ? '' : 's'}`}
-                         </p>
+                        <h3 className="text-xl font-bold">{peep.name}</h3>
+                        <p className="text-sm font-medium text-black">
+                          {peep.diffDays === 0 ? "Today!" : `In ${peep.diffDays} day${peep.diffDays === 1 ? '' : 's'}`}
+                        </p>
                       </div>
                       <p className="text-sm text-gray-700">{peep.dob}</p>
                     </div>
@@ -904,51 +932,51 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                 return monthNames.indexOf(a) - monthNames.indexOf(b);
               })
               .map(([month, peeps]) => (
-              <div key={month}>
-                <h2 className="text-3xl font-bold border-b border-black pb-2 mb-6">{month}</h2>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {peeps
-                    .sort((a, b) => {
-                      const dayA = a.dob ? parseInt(a.dob.split('/')[0], 10) : 0;
-                      const dayB = b.dob ? parseInt(b.dob.split('/')[0], 10) : 0;
-                      return (isNaN(dayA) ? 0 : dayA) - (isNaN(dayB) ? 0 : dayB);
-                    })
-                    .map(peep => (
-                    <div key={peep.id} className="rounded-2xl border border-black p-5 flex flex-col gap-2">
-                      {editingPeepId === peep.id ? (
-                        <div className="grid gap-2">
-                          <input className={inputClassName} value={editingPeepData.name || ''} onChange={e => setEditingPeepData({...editingPeepData, name: e.target.value})} placeholder="Name" />
-                          <input type="date" className={inputClassName} value={toDateInput(editingPeepData.dob || '')} onChange={e => setEditingPeepData({...editingPeepData, dob: fromDateInput(e.target.value)})} />
-                          <input className={inputClassName} value={editingPeepData.contact || ''} onChange={e => setEditingPeepData({...editingPeepData, contact: e.target.value})} placeholder="Contact" />
-                          <textarea className={inputClassName} rows={2} value={editingPeepData.address || ''} onChange={e => setEditingPeepData({...editingPeepData, address: e.target.value})} placeholder="Address" />
-                          <div className="flex gap-2 mt-1">
-                            <button className="border border-black bg-black text-white px-4 py-1.5 text-xs" onClick={() => { onUpdatePeep && onUpdatePeep(peep.id, editingPeepData); setEditingPeepId(null); setNotice('Peep updated.'); }}>SAVE</button>
-                            <button className="border border-gray-400 px-4 py-1.5 text-xs" onClick={() => setEditingPeepId(null)}>CANCEL</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex justify-between items-start gap-2">
-                            <h3 className="text-xl font-bold">{peep.name}</h3>
-                            <div className="flex gap-2 shrink-0">
-                              <button className="text-xs border border-gray-300 px-2 py-1 hover:border-black transition-colors" onClick={() => { setEditingPeepId(peep.id); setEditingPeepData({...peep}); }}>Edit</button>
-                              <button className="text-xs border border-red-300 px-2 py-1 text-red-600 hover:bg-red-50 transition-colors" onClick={() => { if(confirm('Delete this peep?')) { onDeletePeep && onDeletePeep(peep.id); setNotice('Peep deleted.'); } }}>Del</button>
+                <div key={month}>
+                  <h2 className="text-3xl font-bold border-b border-black pb-2 mb-6">{month}</h2>
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {peeps
+                      .sort((a, b) => {
+                        const dayA = a.dob ? parseInt(a.dob.split('/')[0], 10) : 0;
+                        const dayB = b.dob ? parseInt(b.dob.split('/')[0], 10) : 0;
+                        return (isNaN(dayA) ? 0 : dayA) - (isNaN(dayB) ? 0 : dayB);
+                      })
+                      .map(peep => (
+                        <div key={peep.id} className="rounded-2xl border border-black p-5 flex flex-col gap-2">
+                          {editingPeepId === peep.id ? (
+                            <div className="grid gap-2">
+                              <input className={inputClassName} value={editingPeepData.name || ''} onChange={e => setEditingPeepData({ ...editingPeepData, name: e.target.value })} placeholder="Name" />
+                              <input type="date" className={inputClassName} value={toDateInput(editingPeepData.dob || '')} onChange={e => setEditingPeepData({ ...editingPeepData, dob: fromDateInput(e.target.value) })} />
+                              <input className={inputClassName} value={editingPeepData.contact || ''} onChange={e => setEditingPeepData({ ...editingPeepData, contact: e.target.value })} placeholder="Contact" />
+                              <textarea className={inputClassName} rows={2} value={editingPeepData.address || ''} onChange={e => setEditingPeepData({ ...editingPeepData, address: e.target.value })} placeholder="Address" />
+                              <div className="flex gap-2 mt-1">
+                                <button className="border border-black bg-black text-white px-4 py-1.5 text-xs" onClick={() => { onUpdatePeep && onUpdatePeep(peep.id, editingPeepData); setEditingPeepId(null); setNotice('Peep updated.'); }}>SAVE</button>
+                                <button className="border border-gray-400 px-4 py-1.5 text-xs" onClick={() => setEditingPeepId(null)}>CANCEL</button>
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-sm text-gray-700 space-y-1">
-                            {peep.dob && <p><span className="font-medium text-black">DOB:</span> {peep.dob}</p>}
-                            {peep.contact && <p><span className="font-medium text-black">Contact:</span> {peep.contact}</p>}
-                            {peep.address && <p><span className="font-medium text-black">Address:</span> {peep.address}</p>}
-                          </div>
-                        </>
-                      )}
-                      </div>
-                  ))}
+                          ) : (
+                            <>
+                              <div className="flex justify-between items-start gap-2">
+                                <h3 className="text-xl font-bold">{peep.name}</h3>
+                                <div className="flex gap-2 shrink-0">
+                                  <button className="text-xs border border-gray-300 px-2 py-1 hover:border-black transition-colors" onClick={() => { setEditingPeepId(peep.id); setEditingPeepData({ ...peep }); }}>Edit</button>
+                                  <button className="text-xs border border-red-300 px-2 py-1 text-red-600 hover:bg-red-50 transition-colors" onClick={() => { if (confirm('Delete this peep?')) { onDeletePeep && onDeletePeep(peep.id); setNotice('Peep deleted.'); } }}>Del</button>
+                                </div>
+                              </div>
+                              <div className="text-sm text-gray-700 space-y-1">
+                                {peep.dob && <p><span className="font-medium text-black">DOB:</span> {peep.dob}</p>}
+                                {peep.contact && <p><span className="font-medium text-black">Contact:</span> {peep.contact}</p>}
+                                {peep.address && <p><span className="font-medium text-black">Address:</span> {peep.address}</p>}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
             {(!content.peeps || content.peeps.length === 0) && (
-               <p className="text-sm text-gray-700">No peeps found.</p>
+              <p className="text-sm text-gray-700">No peeps found.</p>
             )}
           </div>
         </section>
@@ -998,6 +1026,7 @@ export default function AdminPage({ content, onAddProject, onAddBlog, onAddPeep,
                               <div>
                                 <p className="font-bold text-sm">{v.location?.city || 'Unknown'}</p>
                                 <p className="text-xs text-gray-500">{v.location?.region}, {v.location?.country}</p>
+                                <p className="text-[0.65rem] text-gray-400 mt-1 uppercase tracking-tighter cursor-pointer" title="Click to copy IP" onClick={() => navigator.clipboard.writeText(v.ip)}>IP: {v.ip}</p>
                               </div>
                             </div>
                           </td>
