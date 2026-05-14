@@ -6,6 +6,8 @@ import ProjectsPage from "./ProjectsPage";
 
 import type { SiteContent } from "./lib/types";
 
+import LoadingSequence from "./LoadingSequence";
+
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
 function VisitorTracker() {
@@ -38,16 +40,26 @@ function App() {
   const [siteContent, setSiteContent] = useState<SiteContent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Check if it's the first time loading in this session
+  const [isFirstLoad] = useState(() => !sessionStorage.getItem('hasLoaded'));
+
   // Fetch data from MongoDB on mount
   useEffect(() => {
     async function fetchData() {
       try {
-        const [projectsRes, blogsRes, contactsRes, peepsRes] = await Promise.all([
+        const fetchPromises: any[] = [
           fetch(`${API_BASE}/projects`),
           fetch(`${API_BASE}/blogs`),
           fetch(`${API_BASE}/contacts`),
           fetch(`${API_BASE}/peeps`)
-        ]);
+        ];
+
+        // Only add the artificial delay on the first load
+        if (isFirstLoad) {
+          fetchPromises.push(new Promise(resolve => setTimeout(resolve, 2500)));
+        }
+
+        const [projectsRes, blogsRes, contactsRes, peepsRes] = await Promise.all(fetchPromises);
 
         if (projectsRes.ok && blogsRes.ok && contactsRes.ok && peepsRes.ok) {
           const projects = await projectsRes.json();
@@ -56,6 +68,9 @@ function App() {
           const peeps = await peepsRes.json();
           // Set content strictly from MongoDB
           setSiteContent({ projects, blogs, contacts, peeps });
+
+          // Mark as loaded so subsequent navigations don't show the loading screen
+          sessionStorage.setItem('hasLoaded', 'true');
         } else {
           console.error("Failed to fetch data from API. Is the backend running?");
           setSiteContent({ projects: [], blogs: [], contacts: [], peeps: [] });
@@ -67,24 +82,24 @@ function App() {
         setIsLoading(false);
       }
     }
-    
+
     fetchData();
   }, []);
 
   const handleAddProject = async (draft: any) => {
     try {
       const parsedImages = draft.images.split('\n').map((u: string) => u.trim()).filter(Boolean);
-      
+
       const payload = {
-          title: draft.title.trim(),
-          description: draft.description.trim(),
-          link: draft.link.trim(),
-          githubLink: draft.githubLink?.trim() || "",
-          liveLink: draft.liveLink?.trim() || "",
-          tags: draft.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
-          images: parsedImages,
-          bulletPoints: draft.bulletPoints.split('\n').map((b: string) => b.trim()).filter(Boolean),
-          isFeatured: draft.isFeatured || false
+        title: draft.title.trim(),
+        description: draft.description.trim(),
+        link: draft.link.trim(),
+        githubLink: draft.githubLink?.trim() || "",
+        liveLink: draft.liveLink?.trim() || "",
+        tags: draft.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+        images: parsedImages,
+        bulletPoints: draft.bulletPoints.split('\n').map((b: string) => b.trim()).filter(Boolean),
+        isFeatured: draft.isFeatured || false
       };
 
       const res = await fetch(`${API_BASE}/projects`, {
@@ -103,18 +118,18 @@ function App() {
 
   const handleAddBlog = async (draft: any) => {
     try {
-       const slug = draft.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-       const payload = {
-          title: draft.title.trim(),
-          slug: slug || `post-${Date.now()}`,
-          excerpt: draft.excerpt.trim(),
-          content: draft.content.trim(),
-          tags: draft.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
-          image: draft.image?.trim() || undefined,
-          publishedAt: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-       };
+      const slug = draft.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const payload = {
+        title: draft.title.trim(),
+        slug: slug || `post-${Date.now()}`,
+        excerpt: draft.excerpt.trim(),
+        content: draft.content.trim(),
+        tags: draft.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+        image: draft.image?.trim() || undefined,
+        publishedAt: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+      };
 
-       const res = await fetch(`${API_BASE}/blogs`, {
+      const res = await fetch(`${API_BASE}/blogs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -129,19 +144,19 @@ function App() {
   };
 
   const handleContactSubmit = async (formData: any) => {
-       try {
-           const res = await fetch(`${API_BASE}/contacts`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-           });
-           if(res.ok) {
-               // Assuming you don't need to immediately update frontend state for contacts unless admin page is open
-           }
-       } catch (err) {
-           console.error("Contact submission error", err);
-           throw err;
-       }
+    try {
+      const res = await fetch(`${API_BASE}/contacts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        // Assuming you don't need to immediately update frontend state for contacts unless admin page is open
+      }
+    } catch (err) {
+      console.error("Contact submission error", err);
+      throw err;
+    }
   }
 
   const handleAddPeep = async (draft: any) => {
@@ -219,7 +234,11 @@ function App() {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-[#f4efe7]">Loading...</div>;
+    if (isFirstLoad) {
+      return <LoadingSequence />;
+    }
+    // Alternatively return a very fast/minimal spinner or nothing while the standard fast API call completes
+    return <div className="min-h-screen bg-[#f4efe7]"></div>;
   }
 
   if (!siteContent) return null;
