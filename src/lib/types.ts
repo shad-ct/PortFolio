@@ -170,7 +170,7 @@ export const resumeProfile: ResumeProfile = {
       role: 'Junior React Developer · Part-time · Hybrid',
       period: 'Nov 2024 - Present',
       link: 'https://altezzai.com/',
-      logo: '/public/altezzai.png',
+      logo: '/altezzai.png',
     },
     {
       company: 'TinkerHub',
