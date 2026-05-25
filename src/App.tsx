@@ -6,8 +6,6 @@ import ProjectsPage from "./ProjectsPage";
 
 import type { SiteContent } from "./lib/types";
 
-import LoadingSequence from "./LoadingSequence";
-
 const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? 'https://portfolio-arq2.onrender.com/api' : 'http://localhost:5000/api');
 
 function VisitorTracker() {
@@ -38,28 +36,17 @@ function VisitorTracker() {
 
 function App() {
   const [siteContent, setSiteContent] = useState<SiteContent | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Check if it's the first time loading in this session
-  const [isFirstLoad] = useState(() => !sessionStorage.getItem('hasLoaded'));
 
   // Fetch data from MongoDB on mount
   useEffect(() => {
     async function fetchData() {
       try {
-        const fetchPromises: any[] = [
+        const [projectsRes, blogsRes, contactsRes, peepsRes] = await Promise.all([
           fetch(`${API_BASE}/projects`),
           fetch(`${API_BASE}/blogs`),
           fetch(`${API_BASE}/contacts`),
           fetch(`${API_BASE}/peeps`)
-        ];
-
-        // Only add the artificial delay on the first load
-        if (isFirstLoad) {
-          fetchPromises.push(new Promise(resolve => setTimeout(resolve, 2500)));
-        }
-
-        const [projectsRes, blogsRes, contactsRes, peepsRes] = await Promise.all(fetchPromises);
+        ]);
 
         if (projectsRes.ok && blogsRes.ok && contactsRes.ok && peepsRes.ok) {
           const projects = await projectsRes.json();
@@ -68,9 +55,6 @@ function App() {
           const peeps = await peepsRes.json();
           // Set content strictly from MongoDB
           setSiteContent({ projects, blogs, contacts, peeps });
-
-          // Mark as loaded so subsequent navigations don't show the loading screen
-          sessionStorage.setItem('hasLoaded', 'true');
         } else {
           console.error("Failed to fetch data from API. Is the backend running?");
           setSiteContent({ projects: [], blogs: [], contacts: [], peeps: [] });
@@ -78,8 +62,6 @@ function App() {
       } catch (err) {
         console.error("API connection error:", err);
         setSiteContent({ projects: [], blogs: [], contacts: [], peeps: [] });
-      } finally {
-        setIsLoading(false);
       }
     }
 
