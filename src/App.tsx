@@ -215,15 +215,10 @@ function App() {
     } catch (err) { console.error("Error deleting peep:", err); }
   };
 
-  if (isLoading) {
-    if (isFirstLoad) {
-      return <LoadingSequence />;
-    }
-    // Alternatively return a very fast/minimal spinner or nothing while the standard fast API call completes
+  if (!siteContent) {
+    // Minimal loading state
     return <div className="min-h-screen bg-[#f4efe7]"></div>;
   }
-
-  if (!siteContent) return null;
 
   const pathname = typeof window === "undefined" ? "/" : window.location.pathname.replace(/\/$/, "") || "/";
 
